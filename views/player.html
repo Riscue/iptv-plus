@@ -63,11 +63,6 @@
 
             <!-- Progress -->
             <div id="progress-container">
-                <!-- Üst Kat: Canlı Butonu -->
-                <div class="progress-top">
-                    <button id="btn-live" class="live-btn hidden">📡 CANLI</button>
-                </div>
-
                 <!-- Orta Kat: Progress Bar -->
                 <div class="progress-middle">
                     <div id="progress-bar">
@@ -78,10 +73,13 @@
                 <!-- Alt Kat: Süreler ve Fullscreen -->
                 <div class="progress-bottom">
                     <div id="time-display">
-                        <span id="current-time">0:00</span>
-                        <span id="total-time">--:--</span>
+                        <span id="current-time">00:00:00</span>
+                        <span id="total-time">--:--:--</span>
                     </div>
-                    <button id="btn-fullscreen" class="fullscreen-btn">⛶</button>
+                    <div>
+                        <button id="btn-live" class="live-btn hidden">🔴 CANLI</button>
+                        <button id="btn-fullscreen" class="fullscreen-btn">⛶</button>
+                    </div>
                 </div>
             </div>
         </div>

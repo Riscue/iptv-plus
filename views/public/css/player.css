@@ -143,13 +143,6 @@ body {
     padding: 10px 20px 20px;
 }
 
-/* Üst Kat: Canlı Butonu */
-.progress-top {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 8px;
-}
-
 .live-btn {
     padding: 6px 12px;
     background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
@@ -196,6 +189,7 @@ body {
 
 /* Alt Kat: Süreler ve Fullscreen */
 .progress-bottom {
+    height: 32px;
     display: flex;
     justify-content: space-between;
     align-items: center;
