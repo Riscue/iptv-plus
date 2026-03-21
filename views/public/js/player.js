@@ -287,10 +287,18 @@ class IPTVPlayer {
     }
 
     goToLive() {
-        // Jump to the end of the buffer (live)
-        if (this.video.duration) {
+        // Jump to the end of the buffer (live edge)
+        if (this.video.duration && !isNaN(this.video.duration) && this.video.duration > 0) {
+            // Go to the very end (live)
             this.video.currentTime = this.video.duration;
-            this.video.play().catch(() => {});
+
+            // Start playing if paused
+            if (this.video.paused) {
+                this.video.play().catch(() => {});
+            }
+
+            // Show feedback
+            this.showSeekIndicator('CANLI');
         }
     }
 
