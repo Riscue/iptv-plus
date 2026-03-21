@@ -16,12 +16,12 @@
 
         <!-- Top Bar -->
         <div id="top-bar">
-            <button id="btn-back" class="top-btn">◀ Geri</button>
+            <button id="btn-back" class="top-btn" tabindex="0">◀ Geri</button>
             <div class="channel-info">
                 <span id="channel-name">Kanal Seçin</span>
                 <span id="channel-number"></span>
             </div>
-            <button id="btn-channels" class="top-btn">Kanallar</button>
+            <button id="btn-channels" class="top-btn" tabindex="0">Kanallar</button>
         </div>
 
         <!-- Channel List Overlay -->
@@ -65,7 +65,7 @@
             <div id="progress-container">
                 <!-- Orta Kat: Progress Bar -->
                 <div class="progress-middle">
-                    <div id="progress-bar">
+                    <div id="progress-bar" tabindex="0">
                         <div id="progress-position"></div>
                     </div>
                 </div>
@@ -77,8 +77,8 @@
                         <span id="total-time">--:--:--</span>
                     </div>
                     <div>
-                        <button id="btn-live" class="live-btn hidden">🔴 CANLI</button>
-                        <button id="btn-fullscreen" class="fullscreen-btn">⛶</button>
+                        <button id="btn-live" class="live-btn hidden" tabindex="0">🔴 CANLI</button>
+                        <button id="btn-fullscreen" class="fullscreen-btn" tabindex="0">⛶</button>
                     </div>
                 </div>
             </div>
@@ -86,11 +86,11 @@
 
         <!-- Keyboard Hints -->
         <div id="hints">
-            <span>▲▼ Kanal</span>
-            <span>◄► Geri/İleri</span>
-            <span>● Oynat/Duraklat</span>
-            <span>Menu Fullscreen</span>
-            <span>Exit Geri</span>
+            <span>▲▼ Focus</span>
+            <span>◄► Seek</span>
+            <span>CH± Kanal</span>
+            <span>🔴 Canlı 🔵 Liste</span>
+            <span>🟢-1dk 🟡+1dk</span>
         </div>
     </div>
 

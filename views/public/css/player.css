@@ -127,8 +127,11 @@ body {
     transition: all 0.2s;
 }
 
-.top-btn:hover {
+.top-btn:hover,
+.top-btn:focus {
     background: rgba(0, 212, 255, 0.5);
+    outline: 2px solid #00d4ff;
+    outline-offset: 2px;
 }
 
 /* Bottom Bar */
@@ -193,6 +196,12 @@ body {
     cursor: pointer;
 }
 
+#progress-bar:focus {
+    outline: none;
+    background: rgba(255,255,255,0.3);
+    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.6);
+}
+
 #progress-position {
     height: 100%;
     background: #00d4ff;
@@ -242,8 +251,11 @@ body {
     flex-shrink: 0;
 }
 
-.fullscreen-btn:hover {
+.fullscreen-btn:hover,
+.fullscreen-btn:focus {
     background: rgba(255, 255, 255, 0.3);
+    outline: 2px solid #00d4ff;
+    outline-offset: 2px;
 }
 
 .control-btn {

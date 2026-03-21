@@ -16,6 +16,7 @@ class IPTVPlayer {
         this.isLoading = false;
         this.currentUrl = null;
         this.bufferStartTime = null;
+        this.plannedSeekPosition = null;
 
         this.init();
     }
@@ -141,6 +142,14 @@ class IPTVPlayer {
         this.video.addEventListener('canplay', function() {
             self.showLoading(false);
         });
+
+        // Focus on any focusable element shows UI
+        var focusableSelector = 'button, [tabindex]:not(.channel-item)';
+        document.addEventListener('focus', function(e) {
+            if (e.target.matches(focusableSelector)) {
+                document.body.classList.remove('idle');
+            }
+        }, true); // Use capture for all focus events
     }
 
     loadVideoFromBuffer() {
@@ -355,6 +364,33 @@ class IPTVPlayer {
         setTimeout(() => overlay.classList.remove('show'), 1000);
     }
 
+    showPlannedSeekIndicator(plannedSeconds) {
+        var overlay = document.getElementById('video-overlay');
+        var currentTimeEl = document.getElementById('current-time');
+
+        // Calculate relative time difference (rounded to integer)
+        var diff = Math.round(plannedSeconds - this.video.currentTime);
+        var prefix = diff > 0 ? '+' : '';
+        overlay.textContent = prefix + diff + ' sn';
+        overlay.classList.add('show');
+
+        // Also update time display with planned absolute time
+        if (currentTimeEl && this.bufferStartTime) {
+            var videoTime = new Date(this.bufferStartTime + (Math.round(plannedSeconds) * 1000));
+            var videoTimeStr = videoTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            currentTimeEl.textContent = videoTimeStr;
+        }
+    }
+
+    updateProgressIndicator(time) {
+        var positionEl = document.getElementById('progress-position');
+        if (!positionEl || !this.video.duration) return;
+
+        var positionPercent = (time / this.video.duration) * 100;
+        positionEl.style.width = positionPercent + '%';
+        positionEl.style.background = 'rgba(255, 215, 0, 0.8)';
+    }
+
     toggleChannelList(show) {
         var list = document.getElementById('channel-list');
         if (show === undefined) {
@@ -458,7 +494,12 @@ class IPTVPlayer {
 
     setupIdleDetection() {
         var self = this;
+        this.forceIdle = false;
+
         var resetIdle = function() {
+            // Don't reset idle if we're forcing idle state
+            if (self.forceIdle) return;
+
             document.body.classList.remove('idle');
             clearTimeout(self.idleTimer);
             self.idleTimer = setTimeout(function() {
@@ -490,67 +531,302 @@ class IPTVPlayer {
         var self = this;
         var input = document.getElementById('search-input');
 
+        // Define rows in order (top to bottom) - skip Row 0 (top bar, usually hidden)
+        var getRows = function() {
+            return [
+                // Row 0: Control buttons
+                Array.from(document.querySelectorAll('.control-btn')).filter(function(b) { return b.offsetParent !== null; }),
+                // Row 1: Progress bar
+                document.getElementById('progress-bar'),
+                // Row 2: Bottom buttons
+                Array.from(document.querySelectorAll('.live-btn, .fullscreen-btn')).filter(function(b) { return b.offsetParent !== null; })
+            ];
+        };
+
         document.addEventListener('keydown', function(e) {
-            if (self.channelListVisible && e.target.id === 'search-input') {
+            // ========== CHANNEL LIST MODE ==========
+            if (self.channelListVisible) {
+                if (e.target.id === 'search-input') {
+                    if (e.key === 'Escape' || e.key === 'Exit' || e.keyCode === 1001 || e.keyCode === 1009 || e.keyCode === 461) {
+                        e.preventDefault();
+                        self.toggleChannelList(false);
+                        return;
+                    }
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        var firstChannel = document.querySelector('.channel-item');
+                        if (firstChannel) firstChannel.focus();
+                        return;
+                    }
+                    return;
+                }
+
+                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    var items = Array.from(document.querySelectorAll('.channel-item'));
+                    var currentIndex = items.indexOf(document.activeElement);
+                    var targetIndex = (e.key === 'ArrowDown')
+                        ? (currentIndex < items.length - 1 ? currentIndex + 1 : 0)
+                        : (currentIndex > 0 ? currentIndex - 1 : items.length - 1);
+                    items[targetIndex]?.focus();
+                    items[targetIndex]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    return;
+                }
+
+                if (e.key === 'Enter' || e.key === 'OK') {
+                    e.preventDefault();
+                    var focused = document.querySelector('.channel-item:focus');
+                    if (focused) {
+                        var idx = parseInt(focused.dataset.index);
+                        self.playChannel(idx);
+                        self.toggleChannelList(false);
+                    }
+                    return;
+                }
+
                 if (e.key === 'Escape' || e.key === 'Exit' || e.keyCode === 1001 || e.keyCode === 1009 || e.keyCode === 461) {
+                    e.preventDefault();
                     self.toggleChannelList(false);
+                    return;
+                }
+
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    return;
                 }
                 return;
+            }
+
+            // ========== NORMAL PLAYER MODE ==========
+            var currentFocus = document.activeElement;
+            var isIdle = document.body.classList.contains('idle');
+
+            // IDLE MODE (UI hidden): No focus, direct actions
+            if (isIdle) {
+                self.forceIdle = false;
+                switch(e.key) {
+                    case 'ArrowUp':
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        document.getElementById('progress-bar')?.focus();
+                        document.body.classList.remove('idle');
+                        return;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        self.seekBack();
+                        return;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        self.seekForward();
+                        return;
+                }
+                // Other keys wake up UI
+                document.body.classList.remove('idle');
+            }
+
+            var rows = getRows();
+            var currentRow = -1;
+            var currentCol = -1;
+
+            // Find current row and column
+            for (var r = 0; r < rows.length; r++) {
+                if (rows[r] === null || rows[r].length === 0) continue;
+
+                if (r === 1) { // Progress bar row
+                    if (currentFocus === rows[r]) {
+                        currentRow = r;
+                        currentCol = 0;
+                        break;
+                    }
+                } else { // Button rows
+                    var idx = rows[r].indexOf(currentFocus);
+                    if (idx !== -1) {
+                        currentRow = r;
+                        currentCol = idx;
+                        break;
+                    }
+                }
             }
 
             switch(e.key) {
                 case 'ArrowUp':
                     e.preventDefault();
-                    self.channelDown();
+                    if (currentRow === -1) {
+                        // No focus - wake up at play/pause (middle of row 0)
+                        if (rows[0] && rows[0].length > 0) {
+                            var midCol = Math.floor(rows[0].length / 2);
+                            rows[0][midCol]?.focus();
+                        }
+                    } else if (currentRow === 0) {
+                        // Control buttons (row 0) -> hide UI
+                        self.forceIdle = true;
+                        clearTimeout(self.idleTimer);
+                        document.body.classList.add('idle');
+                        if (document.activeElement && document.activeElement !== document.body) {
+                            document.activeElement.blur();
+                        }
+                    } else if (currentRow === 1) {
+                        // Progress bar (row 1) -> control buttons (row 0)
+                        if (rows[0] && rows[0].length > 0) {
+                            var midCol = Math.floor(rows[0].length / 2);
+                            rows[0][midCol]?.focus();
+                        }
+                    } else if (currentRow === 2) {
+                        // Bottom buttons (row 2) -> progress bar (row 1)
+                        rows[1]?.focus();
+                    }
                     break;
+
                 case 'ArrowDown':
                     e.preventDefault();
-                    self.channelUp();
+                    if (currentRow === -1) {
+                        // No focus - wake up at progress bar
+                        rows[1]?.focus();
+                    } else if (currentRow === 0) {
+                        // Control buttons (row 0) -> progress bar (row 1)
+                        rows[1]?.focus();
+                    } else if (currentRow === 1) {
+                        // Progress bar (row 1) -> bottom buttons (row 2)
+                        if (rows[2] && rows[2].length > 0) rows[2][0].focus();
+                    } else if (currentRow === 2) {
+                        // Bottom buttons (row 2) - stay
+                        if (rows[2] && rows[2].length > 0) rows[2][0].focus();
+                    }
                     break;
+
                 case 'ArrowLeft':
                     e.preventDefault();
-                    self.seekBack();
+                    if (currentRow === -1) {
+                        // No focus - seek back directly
+                        self.seekBack();
+                    } else if (currentRow === 1) {
+                        // Progress bar (row 1) -> plan seek back
+                        var baseTime = self.plannedSeekPosition !== null ? self.plannedSeekPosition : self.video.currentTime;
+                        var plannedTime = Math.max(0, baseTime - self.seekAmount);
+                        // Snap to nearest 10 seconds
+                        plannedTime = Math.round(plannedTime / 10) * 10;
+                        self.plannedSeekPosition = plannedTime;
+                        self.showPlannedSeekIndicator(plannedTime);
+                        self.updateProgressIndicator(plannedTime);
+                    } else if (currentRow !== -1 && rows[currentRow] && rows[currentRow].length > 0) {
+                        // Navigate within button rows
+                        if (currentCol > 0) {
+                            rows[currentRow][currentCol - 1].focus();
+                        } else {
+                            rows[currentRow][rows[currentRow].length - 1].focus();
+                        }
+                    }
                     break;
+
                 case 'ArrowRight':
                     e.preventDefault();
-                    self.seekForward();
-                    break;
-                case 'Enter':
-                    e.preventDefault();
-                    if (self.channelListVisible) {
-                        var focused = document.querySelector('.channel-item:focus');
-                        if (focused) {
-                            var idx = parseInt(focused.dataset.index);
-                            self.playChannel(idx);
-                            self.toggleChannelList(false);
+                    if (currentRow === -1) {
+                        // No focus - seek forward directly
+                        self.seekForward();
+                    } else if (currentRow === 1) {
+                        // Progress bar (row 1) -> plan seek forward
+                        var baseTime = self.plannedSeekPosition !== null ? self.plannedSeekPosition : self.video.currentTime;
+                        var plannedTime = Math.min(self.video.duration || 0, baseTime + self.seekAmount);
+                        // Snap to nearest 10 seconds
+                        plannedTime = Math.round(plannedTime / 10) * 10;
+                        self.plannedSeekPosition = plannedTime;
+                        self.showPlannedSeekIndicator(plannedTime);
+                        self.updateProgressIndicator(plannedTime);
+                    } else if (currentRow !== -1 && rows[currentRow] && rows[currentRow].length > 0) {
+                        // Navigate within button rows
+                        if (currentCol < rows[currentRow].length - 1) {
+                            rows[currentRow][currentCol + 1].focus();
+                        } else {
+                            rows[currentRow][0].focus();
                         }
+                    }
+                    break;
+
+                case 'Enter':
+                case 'OK':
+                    e.preventDefault();
+                    if (currentRow === 1) {
+                        // Progress bar focused - execute planned seek
+                        if (self.plannedSeekPosition !== null) {
+                            self.video.currentTime = self.plannedSeekPosition;
+                            self.plannedSeekPosition = null;
+                            self.showSeekIndicator(Math.round(self.video.currentTime) + ' sn');
+                        } else {
+                            self.togglePlay();
+                        }
+                    } else if (currentRow !== -1) {
+                        currentFocus.click();
                     } else {
                         self.togglePlay();
                     }
                     break;
+
                 case 'Escape':
                 case 'Exit':
                     e.preventDefault();
-                    self.toggleChannelList(false);
+                    fetch('/api/buffer/stop', { method: 'POST' }).catch(() => {});
+                    history.back();
                     break;
+
                 case 'f':
                 case 'F':
                 case 'Menu':
                     e.preventDefault();
                     self.toggleFullscreen();
                     break;
+
+                case ' ':
+                    e.preventDefault();
+                    self.togglePlay();
+                    break;
             }
 
-            // TV remote Exit/Back keys
+            // ========== TV REMOTE SPECIAL KEYS ==========
             if (e.keyCode === 1001 || e.keyCode === 1009 || e.keyCode === 461) {
                 e.preventDefault();
-                self.toggleChannelList(false);
+                fetch('/api/buffer/stop', { method: 'POST' }).catch(() => {});
+                history.back();
             }
 
-            // TV remote Menu key
-            if (e.keyCode === 1016 || e.key === 'Menu') {
+            if (e.keyCode === 1016) {
                 e.preventDefault();
                 self.toggleFullscreen();
+            }
+
+            if (e.keyCode === 427 || e.key === 'ChannelUp') {
+                e.preventDefault();
+                self.channelUp();
+            }
+            if (e.keyCode === 428 || e.key === 'ChannelDown') {
+                e.preventDefault();
+                self.channelDown();
+            }
+
+            // ========== COLOR BUTTONS ==========
+            switch(e.keyCode) {
+                case 403:
+                    e.preventDefault();
+                    self.goToLive();
+                    break;
+                case 404:
+                    e.preventDefault();
+                    self.video.currentTime = Math.min(self.video.duration || 0, self.video.currentTime + 60);
+                    self.showSeekIndicator('+1 dk');
+                    break;
+                case 405:
+                    e.preventDefault();
+                    self.video.currentTime = Math.max(0, self.video.currentTime - 60);
+                    self.showSeekIndicator('-1 dk');
+                    break;
+                case 406:
+                    e.preventDefault();
+                    self.toggleChannelList();
+                    break;
+            }
+
+            if (e.keyCode === 179 || e.key === 'MediaPlayPause' || e.key === 'Play' || e.key === 'Pause') {
+                e.preventDefault();
+                self.togglePlay();
             }
         });
     }
@@ -638,6 +914,21 @@ class IPTVPlayer {
                     self.showSeekIndicator(Math.round(percent * 100) + '%');
                 }
             });
+
+            // Focus shows UI and resets planned seek
+            progressBar.addEventListener('focus', function() {
+                document.body.classList.remove('idle');
+                self.plannedSeekPosition = null;
+                self.updateProgress(); // Reset progress indicator
+            });
+
+            // Blur resets planned seek
+            progressBar.addEventListener('blur', function() {
+                self.plannedSeekPosition = null;
+                self.updateProgress(); // Reset progress indicator
+                var overlay = document.getElementById('video-overlay');
+                overlay.classList.remove('show');
+            });
         }
 
         // Back button - stop recording and go home
@@ -672,6 +963,13 @@ class IPTVPlayer {
 
         if (!positionEl) return;
 
+        // Don't update if we're planning a seek (user is navigating with arrows)
+        if (this.plannedSeekPosition !== null) {
+            return;
+        }
+
+        positionEl.style.background = '#00d4ff';
+
         if (this.video.duration) {
             var positionPercent = (this.video.currentTime / this.video.duration) * 100;
             positionEl.style.width = positionPercent + '%';
@@ -686,6 +984,11 @@ class IPTVPlayer {
         var liveBtn = document.getElementById('btn-live');
 
         if (!currentTimeEl || !totalTimeEl) return;
+
+        // Don't update time display if planning a seek
+        if (this.plannedSeekPosition !== null) {
+            return;
+        }
 
         // Left side - Elapsed time (how much we've watched)
         if (!isNaN(this.video.currentTime)) {

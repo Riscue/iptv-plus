@@ -88,20 +88,34 @@ class BufferController {
 
             // Wait for FFmpeg to exit before cleanup
             await new Promise((resolve) => {
+                let resolved = false;
+
                 const exitHandler = () => {
-                    ffmpegProcess = null;
-                    resolve();
+                    if (!resolved) {
+                        resolved = true;
+                        ffmpegProcess = null;
+                        resolve();
+                    }
                 };
 
                 ffmpegProcess.once('exit', exitHandler);
                 ffmpegProcess.kill('SIGTERM');
 
-                // Force kill after 3 seconds if still running
+                // Force kill after 2 seconds if still running
                 setTimeout(() => {
-                    if (ffmpegProcess) {
+                    if (!resolved && ffmpegProcess) {
+                        console.log('[BUFFER] Force killing FFmpeg after timeout');
                         ffmpegProcess.kill('SIGKILL');
+                        // Give it 500ms then resolve anyway
+                        setTimeout(() => {
+                            if (!resolved) {
+                                resolved = true;
+                                ffmpegProcess = null;
+                                resolve();
+                            }
+                        }, 500);
                     }
-                }, 3000);
+                }, 2000);
             });
         }
 
@@ -122,8 +136,32 @@ class BufferController {
         console.log('[BUFFER] Recording stopped');
     }
 
+    // Force recovery - kill any stuck FFmpeg processes
+    static async forceRecover() {
+        console.log('[BUFFER] Force recovery initiated');
+
+        if (ffmpegProcess) {
+            try {
+                ffmpegProcess.kill('SIGKILL');
+            } catch (e) {}
+            ffmpegProcess = null;
+        }
+
+        // Kill any orphaned ffmpeg processes for our buffer
+        const { spawn } = require('child_process');
+        return new Promise((resolve) => {
+            spawn('pkill', ['-9', '-f', 'ffmpeg ' + bufferDir]).on('close', () => {
+                console.log('[BUFFER] Force recovery completed');
+                resolve();
+            });
+        });
+    }
+
     static async changeChannel(newChannel) {
         console.log('[BUFFER] Changing channel:', currentChannelName, '->', newChannel.name);
+
+        // Force recovery before stopping (clear any stuck processes)
+        await BufferController.forceRecover();
 
         // Stop current buffer
         await BufferController.stopBuffer();
@@ -132,8 +170,8 @@ class BufferController {
         return await BufferController.startBuffer(newChannel);
     }
 
-    static stop() {
-        BufferController.stopBuffer();
+    static async stop() {
+        await BufferController.stopBuffer();
     }
 
     static getStatus(req, res) {
@@ -199,9 +237,9 @@ class BufferController {
         });
     }
 
-    static stop(req, res) {
+    static async stop(req, res) {
         console.log('[BUFFER] Stop requested via API');
-        BufferController.stopBuffer();
+        await BufferController.stopBuffer();
         res.json({ success: true });
     }
 

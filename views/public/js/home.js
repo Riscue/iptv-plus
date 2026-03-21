@@ -9,7 +9,6 @@ class HomePage {
         this.searchTimeout = null;
         this.watchHistory = this.loadWatchHistory();
         this.longPressTimer = null;
-        this.isPlaying = false;
 
         this.init();
     }
@@ -132,10 +131,11 @@ class HomePage {
             if (channel) {
                 div.innerHTML = '<span class="dial-number">' + (i + 1) + '</span>' +
                                '<span class="channel-name">' + channel.name + '</span>';
-                div.tabIndex = 0;
+                div.tabIndex = 0; // Only filled items focusable
             } else {
                 div.className = 'favorite-item empty';
                 div.innerHTML = '<span class="dial-number">' + (i + 1) + '</span>';
+                // No tabindex for empty items
             }
 
             grid.appendChild(div);
@@ -215,7 +215,7 @@ class HomePage {
             .sort(function(a, b) {
                 return b.count - a.count;
             })
-            .slice(0, 10);
+            .slice(0, 9);
 
         if (sortedChannels.length === 0) {
             grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; padding: 20px;">Henüz kanal izlenmedi</div>';
@@ -325,13 +325,34 @@ class HomePage {
         document.getElementById('channels-title').textContent = categoryName + ' - Kanallar';
 
         this.renderChannels(catChannels);
+
+        // Focus first channel
+        setTimeout(function() {
+            var firstChannel = document.querySelector('.channel-item');
+            if (firstChannel) firstChannel.focus();
+        }, 50);
     }
 
     showCategoriesView() {
+        var categoryName = this.currentCategory;
         this.currentCategory = null;
         document.getElementById('categories-view').classList.remove('hidden');
         document.getElementById('channels-view').classList.add('hidden');
         document.getElementById('back-nav').classList.add('hidden');
+
+        // Focus the category we just came from
+        setTimeout(function() {
+            var categoryItems = Array.from(document.querySelectorAll('.category-item'));
+            var targetCategory = categoryItems.find(function(el) {
+                return el.dataset.category === categoryName;
+            });
+            if (targetCategory) {
+                targetCategory.focus();
+                targetCategory.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else if (categoryItems.length > 0) {
+                categoryItems[0].focus();
+            }
+        }, 50);
     }
 
     renderChannels(channelsList) {
@@ -441,6 +462,12 @@ class HomePage {
         document.getElementById('channels-title').textContent = 'Arama Sonuçları';
 
         this.renderChannels(filtered.slice(0, 100));
+
+        // Focus first result
+        setTimeout(function() {
+            var firstChannel = document.querySelector('.channel-item');
+            if (firstChannel) firstChannel.focus();
+        }, 50);
     }
 
     setupKeyboardEvents() {
@@ -448,55 +475,149 @@ class HomePage {
         var input = document.getElementById('search-input');
 
         document.addEventListener('keydown', function(e) {
-            // Number keys 1-9 for favorites
+            // Number keys 1-9
             if (e.key >= '1' && e.key <= '9') {
-                var index = parseInt(e.key) - 1;
-
-                // If input is focused and has content, let typing work
-                if (document.activeElement === input && input.value.length > 0) {
-                    return;
-                }
-
-                // Otherwise, trigger favorite
-                if (self.favorites[index]) {
-                    e.preventDefault();
-                    if (document.activeElement === input) {
-                        input.value = '';
-                        input.blur();
+                var idx = parseInt(e.key) - 1;
+                if (self.favorites[idx]) {
+                    if (!(document.activeElement === input && input.value.length > 0)) {
+                        e.preventDefault();
+                        self.playChannel(self.favorites[idx]);
                     }
-                    self.playChannel(self.favorites[index]);
                 }
                 return;
             }
 
-            // Escape/Exit/Back key
+            // Escape/Back
             if (e.key === 'Escape' || e.key === 'Exit' || e.keyCode === 1001 || e.keyCode === 1009 || e.keyCode === 461) {
-                if (document.activeElement === input) {
+                if (self.currentCategory) {
+                    self.showCategoriesView();
+                } else if (document.activeElement === input) {
                     input.value = '';
                     input.blur();
-                    if (self.currentCategory) {
-                        self.showCategoriesView();
-                    }
-                } else if (self.currentCategory) {
-                    self.showCategoriesView();
                 }
                 return;
             }
 
-            // Letter keys focus search input
-            if (document.activeElement.tagName !== 'INPUT' && input && e.key.length === 1) {
+            // Letter keys focus search
+            if (document.activeElement.tagName !== 'INPUT' && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
                 var code = e.key.charCodeAt(0);
                 if ((code >= 65 && code <= 90) || (code >= 97 && code <= 122)) {
                     input.focus();
+                    return;
+                }
+            }
+
+            // Arrow navigation
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                if (document.activeElement === input) return;
+
+                e.preventDefault();
+                var current = document.activeElement;
+
+                // First keypress - focus first item
+                if (current.tagName === 'BODY' || !current.matches('.favorite-item:not(.empty), .recent-item, .category-item, .channel-item')) {
+                    var firstItem = document.querySelector('.favorite-item:not(.empty), .recent-item, .category-item, .channel-item');
+                    if (firstItem) {
+                        firstItem.focus();
+                        firstItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    return;
+                }
+
+                // Get all visible grids
+                var grids = ['#favorites-grid', '#recent-grid', '#categories-grid', '#channels-grid']
+                    .map(function(id) { return document.querySelector(id); })
+                    .filter(function(g) { return g && g.offsetParent !== null; });
+
+                var grid = current.closest('#favorites-grid, #recent-grid, #categories-grid, #channels-grid');
+                if (!grid) return;
+
+                var gridIdx = grids.indexOf(grid);
+                if (gridIdx === -1) return;
+
+                // Get items in current grid
+                var items = Array.from(grid.children).filter(function(el) {
+                    return !el.classList.contains('empty') && el.offsetParent !== null;
+                });
+                var idx = items.indexOf(current);
+                if (idx === -1) return;
+
+                // Count columns
+                var firstY = items[0].getBoundingClientRect().top;
+                var cols = 0;
+                for (var i = 0; i < items.length; i++) {
+                    if (Math.abs(items[i].getBoundingClientRect().top - firstY) < 10) cols++;
+                    else break;
+                }
+                if (cols === 0) cols = 3;
+
+                var row = Math.floor(idx / cols);
+                var col = idx % cols;
+                var target = idx;
+                var targetGrid = null;
+
+                if (e.key === 'ArrowRight') {
+                    if (col < cols - 1 && idx + 1 < items.length) target = idx + 1;
+                } else if (e.key === 'ArrowLeft') {
+                    if (col > 0) target = idx - 1;
+                } else if (e.key === 'ArrowDown') {
+                    target = idx + cols;
+                    if (target >= items.length) {
+                        if (gridIdx < grids.length - 1) {
+                            targetGrid = grids[gridIdx + 1];
+                            var nextItems = Array.from(targetGrid.children).filter(function(el) {
+                                return !el.classList.contains('empty') && el.offsetParent !== null;
+                            });
+                            target = Math.min(col, nextItems.length - 1);
+                        } else target = idx;
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    if (row > 0) {
+                        target = idx - cols;
+                    } else if (gridIdx > 0) {
+                        targetGrid = grids[gridIdx - 1];
+                        var prevItems = Array.from(targetGrid.children).filter(function(el) {
+                            return !el.classList.contains('empty') && el.offsetParent !== null;
+                        });
+                        var pFirstY = prevItems[0].getBoundingClientRect().top;
+                        var pCols = 0;
+                        for (var i = 0; i < prevItems.length; i++) {
+                            if (Math.abs(prevItems[i].getBoundingClientRect().top - pFirstY) < 10) pCols++;
+                            else break;
+                        }
+                        var pRows = Math.ceil(prevItems.length / pCols);
+                        var pRowStart = (pRows - 1) * pCols;
+                        target = Math.min(pRowStart + col, prevItems.length - 1);
+                    }
+                }
+
+                // Focus
+                if (targetGrid) {
+                    var tItems = Array.from(targetGrid.children).filter(function(el) {
+                        return !el.classList.contains('empty') && el.offsetParent !== null;
+                    });
+                    if (target >= 0 && target < tItems.length) {
+                        tItems[target].focus();
+                        tItems[target].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                } else if (target !== idx && target >= 0 && target < items.length) {
+                    items[target].focus();
+                    items[target].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+                return;
+            }
+
+            // Enter/OK
+            if (e.key === 'Enter' || e.key === 'OK') {
+                if (document.activeElement.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    document.activeElement.click();
                 }
             }
         });
     }
 
     playChannel(channel) {
-        if (this.isPlaying) return;
-        this.isPlaying = true;
-
         var self = this;
         var index = this.channels.findIndex(function(ch) { return ch.name === channel.name; });
 
@@ -509,16 +630,13 @@ class HomePage {
                 })
                 .then(function() {
                     self.addToWatchHistory(self.channels[index]);
-                    sessionStorage.setItem('navigatingFromHome', 'true');
                     window.location.href = '/player';
                 })
                 .catch(function(err) {
                     console.error('Failed to change channel:', err);
-                    self.isPlaying = false;
                 });
         } else {
             console.error('Channel not found:', channel.name);
-            this.isPlaying = false;
         }
     }
 }
@@ -526,4 +644,12 @@ class HomePage {
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
     window.homePage = new HomePage();
+});
+
+// Handle pageshow - just ensure page is responsive, don't re-create
+window.addEventListener('pageshow', function(e) {
+    if (e.persisted && window.homePage) {
+        // Page loaded from cache, refresh data but keep instance
+        window.homePage.loadData();
+    }
 });
