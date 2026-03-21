@@ -69,8 +69,21 @@ class ChannelController {
             // Parse channels with categories
             const channelMap = new Map(); // category -> channels
 
+            // VOD/Movie file extensions to exclude
+            const vodExtensions = ['.mkv', '.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v'];
+            // VOD/Movie category keywords to exclude
+            const vodCategoryKeywords = ['film', 'movie', 'vod', 'sinema', 'cinema'];
+
             (result.segments || []).forEach(s => {
                 if (s.inf && s.inf.title && s.url) {
+                    // Skip VOD/Movie files - only allow live streams
+                    const urlLower = s.url.toLowerCase();
+                    const isVodFile = vodExtensions.some(ext => urlLower.endsWith(ext));
+
+                    if (isVodFile) {
+                        return; // Skip this entry
+                    }
+
                     // Try to get group title from various locations
                     let groupTitle = 'Genel';
                     if (s.inf.groupTitle) {
@@ -79,6 +92,14 @@ class ChannelController {
                         groupTitle = s.inf.attributes['GROUP-NAME'];
                     } else if (s.inf.attributes && s.inf.attributes.group) {
                         groupTitle = s.inf.attributes.group;
+                    }
+
+                    // Skip VOD/Movie categories
+                    const categoryLower = groupTitle.toLowerCase();
+                    const isVodCategory = vodCategoryKeywords.some(keyword => categoryLower.includes(keyword));
+
+                    if (isVodCategory) {
+                        return; // Skip this entry
                     }
 
                     const channel = {
@@ -94,13 +115,19 @@ class ChannelController {
                 }
             });
 
-            // Convert to arrays and sort
-            categories = Array.from(channelMap.keys()).sort();
+            // Convert to arrays and sort - only include categories with channels
             channelsCache = [];
 
             channelMap.forEach((chans, cat) => {
-                channelsCache.push(...chans);
+                if (chans.length > 0) {
+                    channelsCache.push(...chans);
+                }
             });
+
+            // Only include non-empty categories
+            categories = Array.from(channelMap.keys())
+                .filter(cat => channelMap.get(cat).length > 0)
+                .sort();
 
             console.log('[PLAYLIST] Loaded ' + channelsCache.length + ' channels in ' + categories.length + ' categories');
 
