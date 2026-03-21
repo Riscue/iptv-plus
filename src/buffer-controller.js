@@ -85,8 +85,24 @@ class BufferController {
     static async stopBuffer() {
         if (ffmpegProcess) {
             console.log('[BUFFER] Stopping recording:', currentChannelName);
-            ffmpegProcess.kill('SIGTERM');
-            ffmpegProcess = null;
+
+            // Wait for FFmpeg to exit before cleanup
+            await new Promise((resolve) => {
+                const exitHandler = () => {
+                    ffmpegProcess = null;
+                    resolve();
+                };
+
+                ffmpegProcess.once('exit', exitHandler);
+                ffmpegProcess.kill('SIGTERM');
+
+                // Force kill after 3 seconds if still running
+                setTimeout(() => {
+                    if (ffmpegProcess) {
+                        ffmpegProcess.kill('SIGKILL');
+                    }
+                }, 3000);
+            });
         }
 
         if (cleanupInterval) {
@@ -94,7 +110,7 @@ class BufferController {
             cleanupInterval = null;
         }
 
-        // Clean up buffer directory
+        // Clean up buffer directory AFTER FFmpeg exits
         if (currentChannelName) {
             const channelPath = BufferController.getChannelBufferPath(currentChannelName);
             console.log('[BUFFER] Cleaning up buffer directory:', channelPath);
