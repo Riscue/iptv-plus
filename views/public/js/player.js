@@ -124,6 +124,23 @@ class IPTVPlayer {
         this.video.addEventListener('pause', function() {
             self.updatePlayButtons();
         });
+
+        // Show loading when waiting for buffer during playback
+        this.video.addEventListener('waiting', function() {
+            console.log('[PLAYER] Video waiting for buffer...');
+            self.showLoading(true);
+        });
+
+        // Hide loading when playing resumes
+        this.video.addEventListener('playing', function() {
+            console.log('[PLAYER] Video playing');
+            self.showLoading(false);
+        });
+
+        // Also hide loading on canplay (enough data to play)
+        this.video.addEventListener('canplay', function() {
+            self.showLoading(false);
+        });
     }
 
     loadVideoFromBuffer() {
@@ -182,6 +199,7 @@ class IPTVPlayer {
 
         var firstFragmentLoaded = false;
 
+        // Fragment loaded - hide loading
         this.hls.on(Hls.Events.FRAG_LOADED, () => {
             if (!firstFragmentLoaded) {
                 firstFragmentLoaded = true;
@@ -189,6 +207,16 @@ class IPTVPlayer {
                 this.showLoading(false);
                 this.video.play().catch(() => {});
                 this.updatePlayButtons();
+            } else {
+                // Buffer recovered during playback
+                this.showLoading(false);
+            }
+        });
+
+        // Buffer stalled - show loading during playback
+        this.hls.on(Hls.Events.BUFFER_STALLED, () => {
+            if (firstFragmentLoaded) {
+                this.showLoading(true);
             }
         });
 

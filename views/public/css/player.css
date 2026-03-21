@@ -52,6 +52,24 @@ body {
     opacity: 1;
 }
 
+/* Loading spinner animation */
+#video-overlay::before {
+    content: '';
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-top-color: #00d4ff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 15px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
 /* Top Bar */
 #top-bar {
     position: absolute;
