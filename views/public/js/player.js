@@ -298,7 +298,7 @@ class IPTVPlayer {
             }
 
             // Show feedback
-            this.showSeekIndicator('CANLI');
+            this.showLiveIndicator();
         }
     }
 
@@ -310,6 +310,13 @@ class IPTVPlayer {
     seekForward() {
         this.video.currentTime = Math.min(this.video.duration || 0, this.video.currentTime + this.seekAmount);
         this.showSeekIndicator(this.seekAmount);
+    }
+
+    showLiveIndicator() {
+        var overlay = document.getElementById('video-overlay');
+        overlay.textContent = 'CANLI';
+        overlay.classList.add('show');
+        setTimeout(() => overlay.classList.remove('show'), 1000);
     }
 
     showSeekIndicator(seconds) {
