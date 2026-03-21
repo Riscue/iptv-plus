@@ -6,7 +6,7 @@ module.exports = {
     playlistFile: process.env.PLAYLIST_FILE || "/tmp/playlist.m3u8",
 
     // Buffer / DVR - absolute path
-    bufferDir: process.env.BUFFER_DIR || path.join(__dirname, '../../tmp/iptv-buffer'),
+    bufferDir: process.env.BUFFER_DIR || "/tmp/iptv-buffer",
     bufferDurationMinutes: 180, // 3 saat
 
     // Server

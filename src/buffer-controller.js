@@ -67,8 +67,6 @@ class BufferController {
                 console.log('[BUFFER] FFmpeg stopped by user');
             } else if (code === 0) {
                 console.log('[BUFFER] FFmpeg exited normally');
-            } else if (code === 255) {
-                console.log('[BUFFER] FFmpeg: Connection lost');
             } else {
                 console.log('[BUFFER] FFmpeg exited - code:', code, 'signal:', signal);
             }
