@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV Player - Kanal Seç</title>
+    <link rel="stylesheet" href="/public/css/home.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header with Search -->
+        <header id="header">
+            <h1>📺 IPTV Player</h1>
+            <div id="search-box">
+                <input id="search-input" type="text" placeholder="Kanal ara..." autocomplete="off">
+                <span id="search-icon">🔍</span>
+            </div>
+        </header>
+
+        <!-- Favorites (Quick Dial 1-9) -->
+        <section id="favorites">
+            <h2>Favoriler (1-9 Tuşları)</h2>
+            <div id="favorites-grid"></div>
+        </section>
+
+        <!-- Recently/Most Watched -->
+        <section id="recent">
+            <h2>Son İzlenenler</h2>
+            <div id="recent-grid"></div>
+        </section>
+
+        <!-- Back Navigation -->
+        <div id="back-nav" class="hidden">
+            <button id="btn-back">◀ Geri</button>
+            <span id="current-category-name"></span>
+        </div>
+
+        <!-- Categories Grid -->
+        <main id="categories-view">
+            <h2>Kategoriler</h2>
+            <div id="categories-grid"></div>
+        </main>
+
+        <!-- Channels Grid -->
+        <main id="channels-view" class="hidden">
+            <h2 id="channels-title">Kanallar</h2>
+            <div id="channels-grid"></div>
+        </main>
+    </div>
+
+    <script src="/public/js/home.js"></script>
+</body>
+</html>

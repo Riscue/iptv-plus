@@ -1,0 +1,20 @@
+{
+  "name": "iptvplus",
+  "version": "1.0.0",
+  "description": "IPTV Player with TV remote control support and DVR functionality",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "author": "Riscue",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.13.5",
+    "body-parser": "^2.2.1",
+    "express": "^4.17.1",
+    "m3u8-file-parser": "^0.2.4",
+    "moment": "^2.29.4",
+    "serve-favicon": "^2.5.1"
+  }
+}

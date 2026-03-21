@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV Player</title>
+    <link rel="stylesheet" href="/public/css/player.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Video Container -->
+        <div id="video-container">
+            <video id="video" autoplay></video>
+            <div id="video-overlay"></div>
+        </div>
+
+        <!-- Top Bar -->
+        <div id="top-bar">
+            <a href="/" class="back-btn">◀</a>
+            <div class="channel-info">
+                <span id="channel-name">Kanal Seçin</span>
+                <span id="channel-number"></span>
+            </div>
+            <button id="btn-channels" class="top-btn">Kanallar</button>
+        </div>
+
+        <!-- Channel List Overlay -->
+        <div id="channel-list" class="hidden">
+            <div class="list-header">
+                <span>Kanallar</span>
+                <button id="btn-close-list" class="close-btn">✕</button>
+            </div>
+            <div class="list-search">
+                <input id="search-input" type="text" placeholder="Ara..." autocomplete="off">
+            </div>
+            <div id="channel-items"></div>
+        </div>
+
+        <!-- Bottom Bar -->
+        <div id="bottom-bar">
+            <!-- Controls -->
+            <div class="controls-row">
+                <button id="btn-ch-prev" class="control-btn">
+                    <span class="btn-icon">⏮</span>
+                    <span class="btn-label">Önceki</span>
+                </button>
+                <button id="btn-back" class="control-btn">
+                    <span class="btn-icon">⏪</span>
+                    <span class="btn-label">Geri</span>
+                </button>
+                <button id="btn-play-pause" class="control-btn main-btn">
+                    <span class="btn-icon">▶</span>
+                </button>
+                <button id="btn-fwd" class="control-btn">
+                    <span class="btn-icon">⏩️</span>
+                    <span class="btn-label">İleri</span>
+                </button>
+                <button id="btn-ch-next" class="control-btn">
+                    <span class="btn-icon">⏭</span>
+                    <span class="btn-label">Sonraki</span>
+                </button>
+            </div>
+
+            <!-- Progress -->
+            <div id="progress-container">
+                <!-- Üst Kat: Canlı Butonu -->
+                <div class="progress-top">
+                    <button id="btn-live" class="live-btn hidden">📡 CANLI</button>
+                </div>
+
+                <!-- Orta Kat: Progress Bar -->
+                <div class="progress-middle">
+                    <div id="progress-bar">
+                        <div id="progress-position"></div>
+                    </div>
+                </div>
+
+                <!-- Alt Kat: Süreler ve Fullscreen -->
+                <div class="progress-bottom">
+                    <div id="time-display">
+                        <span id="current-time">0:00</span>
+                        <span id="total-time">--:--</span>
+                    </div>
+                    <button id="btn-fullscreen" class="fullscreen-btn">⛶</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Keyboard Hints -->
+        <div id="hints">
+            <span>▲▼ Kanal</span>
+            <span>◄► Geri/İleri</span>
+            <span>● Oynat/Duraklat</span>
+            <span>Menu Fullscreen</span>
+            <span>Exit Geri</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="/public/js/player.js"></script>
+</body>
+</html>
