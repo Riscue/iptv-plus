@@ -84,21 +84,6 @@ section {
     border-radius: 10px;
 }
 
-#btn-back {
-    padding: 10px 20px;
-    background: rgba(0, 212, 255, 0.2);
-    border: 1px solid rgba(0, 212, 255, 0.5);
-    border-radius: 8px;
-    color: #00d4ff;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-#btn-back:hover {
-    background: rgba(0, 212, 255, 0.4);
-}
-
 #current-category-name {
     font-size: 1.2rem;
     color: #fff;

@@ -560,9 +560,9 @@ class IPTVPlayer {
             btnChNext.addEventListener('click', function() { self.channelUp(); });
         }
 
-        var btnBack = document.getElementById('btn-back');
-        if (btnBack) {
-            btnBack.addEventListener('click', function() { self.seekBack(); });
+        var btnRewind = document.getElementById('btn-rwnd');
+        if (btnRewind) {
+            btnRewind.addEventListener('click', function() { self.seekBack(); });
         }
 
         var btnFwd = document.getElementById('btn-fwd');
@@ -606,12 +606,12 @@ class IPTVPlayer {
         }
 
         // Back button - stop recording and go home
-        var backBtn = document.querySelector('.back-btn');
+        var backBtn = document.getElementById('btn-back');
         if (backBtn) {
             backBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 fetch('/api/buffer/stop', { method: 'POST' }).catch(() => {});
-                window.location.href = '/';
+                history.back();
             });
         }
     }
