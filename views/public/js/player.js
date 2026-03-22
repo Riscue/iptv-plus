@@ -440,6 +440,16 @@ class IPTVPlayer {
         return mins + ':' + (secs < 10 ? '0' : '') + secs;
     }
 
+    getRealTime(videoTimeSeconds) {
+        if (this.bufferStartTime && !isNaN(videoTimeSeconds)) {
+            var videoTime = new Date(this.bufferStartTime + (videoTimeSeconds * 1000));
+            return videoTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        } else {
+            var now = new Date();
+            return now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+    }
+
     // ==================== INDICATOR SYSTEM ====================
     // Öncelik tabanlı indikatör sistemi
     // Yüksek öncelikli indikatörler (seek, live, play) düşük önceliklileri (loading) geçer
@@ -490,10 +500,16 @@ class IPTVPlayer {
                 var diff = data.seconds || 0;
                 var planPrefix = diff > 0 ? '+' : '';
                 var planIcon = diff > 0 ? '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>' : '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>';
-                var planTime = data.time || this.formatTime(this.video.currentTime);
+                var planTime = data.time || this.getRealTime(this.video.currentTime);
                 overlay.innerHTML = '<div class="plan-info">' + planIcon + ' ' + planPrefix + diff + ' sn</div>' +
                                    '<div class="plan-time">' + planTime + '</div>';
                 overlay.classList.add('plan-mode', 'active');
+                if (data.autoHide) {
+                    this.overlayTimer = setTimeout(function() {
+                        overlay.classList.remove('active');
+                        self.overlayType = null;
+                    }, 1000);
+                }
                 break;
 
             case 'loading':
@@ -518,6 +534,9 @@ class IPTVPlayer {
                 this.overlayTimer = setTimeout(function() {
                     overlay.classList.remove('active');
                     self.overlayType = null;
+                    if (self.video && self.video.readyState < 3 && !self.video.paused) {
+                        self.showIndicator('loading');
+                    }
                 }, 500);
                 break;
 
@@ -660,14 +679,20 @@ class IPTVPlayer {
         var self = this;
         this.forceIdle = false;
 
-        var resetIdle = function() {
-            // Don't reset idle if we're forcing idle state
+        var resetIdle = function(e) {
+            // Fare veya dokunmatikle tetiklenirse forceIdle modunu kaldır
+            if (e && (e.type === 'mousemove' || e.type === 'click' || e.type === 'touchstart')) {
+                self.forceIdle = false;
+            }
+
+            // Don't reset idle if we're forcing idle state (via keyboard ArrowUp)
             if (self.forceIdle) return;
 
             document.body.classList.remove('idle');
             clearTimeout(self.idleTimer);
             self.idleTimer = setTimeout(function() {
-                if (!self.channelListVisible && !self.video.paused) {
+                // Eğer aktif bir seek planlaması VEYA açık liste yoksa gizle
+                if (!self.channelListVisible && !self.video.paused && self.plannedSeekPosition === null) {
                     document.body.classList.add('idle');
                 }
             }, self.idleTimeout);
@@ -748,7 +773,7 @@ class IPTVPlayer {
                     return;
                 }
 
-                if (e.key === 'Escape' || e.key === 'Exit' || e.keyCode === 1001 || e.keyCode === 1009 || e.keyCode === 461) {
+                if (e.key === 'Escape' || e.key === 'Exit' || e.keyCode === 1001 || e.keyCode === 1009 || e.keyCode === 461 || e.keyCode === 406) {
                     e.preventDefault();
                     self.toggleChannelList(false);
                     return;
@@ -963,11 +988,11 @@ class IPTVPlayer {
                 self.toggleFullscreen();
             }
 
-            if (e.keyCode === 427 || e.key === 'ChannelUp') {
+            if (e.keyCode === 427 || e.key === 'ChannelUp' || e.keyCode === 33) {
                 e.preventDefault();
                 self.channelUp();
             }
-            if (e.keyCode === 428 || e.key === 'ChannelDown') {
+            if (e.keyCode === 428 || e.key === 'ChannelDown' || e.keyCode === 34) {
                 e.preventDefault();
                 self.channelDown();
             }
@@ -991,7 +1016,7 @@ class IPTVPlayer {
             }
 
             if (e.keyCode === 179 || e.key === 'MediaPlayPause' || e.key === 'Play' || e.key === 'Pause' ||
-                e.keyCode === 415 || e.keyCode === 19) { // TV Remote: Play(415), Pause(19)
+                e.keyCode === 415 || e.keyCode === 19 || e.keyCode === 126 || e.keyCode === 127) { // TV Remote: Play(415), Pause(19), Android Play(126), Pause(127)
                 e.preventDefault();
                 self.togglePlay();
             }
@@ -1078,7 +1103,9 @@ class IPTVPlayer {
                 var percent = (e.clientX - rect.left) / rect.width;
                 if (self.video.duration) {
                     var newTime = percent * self.video.duration;
+                    var diff = Math.round(newTime - self.video.currentTime);
                     self.video.currentTime = newTime;
+                    self.showIndicator('plan', { seconds: diff, time: self.getRealTime(newTime), autoHide: true });
                 }
             });
 
@@ -1166,14 +1193,7 @@ class IPTVPlayer {
         }
 
         // Right side - Video time (what time it is in the video)
-        if (this.bufferStartTime && !isNaN(this.video.currentTime)) {
-            var videoTime = new Date(this.bufferStartTime + (this.video.currentTime * 1000));
-            var videoTimeStr = videoTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            totalTimeEl.textContent = videoTimeStr;
-        } else {
-            var now = new Date();
-            totalTimeEl.textContent = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        }
+        totalTimeEl.textContent = this.getRealTime(this.video.currentTime);
 
         // Show/hide live button based on whether we're at live edge
         if (liveBtn) {

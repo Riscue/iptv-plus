@@ -49,7 +49,7 @@ body {
 /* Base Overlay */
 #video-overlay {
     position: absolute;
-    top: 50%;
+    top: 42%;
     left: 50%;
     transform: translate(-50%, -50%);
     font-size: clamp(2rem, 4vw, 3.5rem);
@@ -298,9 +298,13 @@ body {
 /* Orta Kat: Progress Bar */
 .progress-middle {
     margin-bottom: 8px;
+    height: clamp(8px, 1vh, 12px);
+    display: flex;
+    align-items: center;
 }
 
 #progress-bar {
+    width: 100%;
     height: clamp(4px, 0.6vh, 8px);
     background: rgba(255, 255, 255, 0.2);
     border-radius: 2px;
@@ -570,8 +574,8 @@ body.idle #video-overlay.active {
 .fullscreen-btn:focus,
 .live-btn:focus,
 .control-btn:focus {
-    outline: clamp(5px, 0.8vw, 8px) solid #00d4ff;
-    outline-offset: clamp(5px, 0.8vw, 8px);
+    outline: clamp(3px, 0.6vw, 6px) solid #00d4ff;
+    outline-offset: clamp(3px, 0.6vw, 6px);
 }
 
 .progress-bar:focus {

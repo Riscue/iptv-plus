@@ -37,6 +37,17 @@ class HomePage {
                 // Page loaded from cache, refresh data but keep instance
                 self.loadData();
             }
+            
+            // Eğer aktif element temizlendiyse (DOM değiştiği için), klavyenin çalışması için bir elemente tekrar odaklan
+            setTimeout(function() {
+                var active = document.activeElement;
+                if (!active || active === document.body || !document.body.contains(active)) {
+                    var firstItem = document.querySelector('.favorite-item:not(.empty), .recent-item, .category-item');
+                    if (firstItem) {
+                        firstItem.focus();
+                    }
+                }
+            }, 100);
         });
     }
 
@@ -575,6 +586,16 @@ class HomePage {
                 } else if (document.activeElement === input) {
                     input.value = '';
                     input.blur();
+                }
+                return;
+            }
+
+            // Green button - resume recording
+            if (e.keyCode === 404) {
+                e.preventDefault();
+                var recordingEl = document.querySelector('.recent-item.recording');
+                if (recordingEl) {
+                    recordingEl.click();
                 }
                 return;
             }
