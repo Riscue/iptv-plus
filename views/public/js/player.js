@@ -544,6 +544,13 @@ class IPTVPlayer {
             var input = document.getElementById('search-input');
             if (input) {
                 input.value = '';
+            }
+            // Aktif kanala scroll yap ve fokusla
+            var activeItem = document.querySelector('.channel-item.active');
+            if (activeItem) {
+                activeItem.scrollIntoView({ block: 'center' });
+                activeItem.focus();
+            } else if (input) {
                 input.focus();
             }
         }
@@ -1178,7 +1185,9 @@ class IPTVPlayer {
 
         items.innerHTML = filtered.map(function(ch) {
             var idx = self.channels.indexOf(ch);
-            return '<div class="channel-item" data-index="' + idx + '" tabindex="0">' + ch.name + '</div>';
+            var isActive = idx === self.channelIndex;
+            var classes = 'channel-item' + (isActive ? ' active' : '');
+            return '<div class="' + classes + '" data-index="' + idx + '" tabindex="0">' + ch.name + '</div>';
         }).join('');
 
         items.onclick = function(e) {
