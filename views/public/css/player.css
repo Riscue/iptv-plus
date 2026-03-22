@@ -17,6 +17,14 @@ body {
     font-size: clamp(16px, 1.2vw, 24px);
 }
 
+.svg-icon {
+    display: inline-block;
+    vertical-align: -0.15em;
+    width: 1em;
+    height: 1em;
+    fill: currentColor;
+}
+
 #app {
     width: 100%;
     height: 100%;
@@ -82,6 +90,8 @@ body {
     border-radius: 10px;
     border: 2px solid rgba(0, 212, 255, 0.5);
     backdrop-filter: blur(10px);
+    flex-direction: row;
+    gap: 15px;
 }
 
 /* Plan Mode - Seek Planning: ⏩ +10 sn + 00:06:45 */
@@ -145,12 +155,16 @@ body {
     border-radius: 12px;
     border: 2px solid rgba(255, 50, 50, 0.6);
     backdrop-filter: blur(10px);
+    flex-direction: row;
+    gap: 15px;
 }
 
 /* Live Mode - 🔴 CANLI */
 #video-overlay.live-mode {
     color: #ff3333;
     text-shadow: 0 0 20px rgba(255, 50, 50, 0.8), 0 2px 15px rgba(0, 0, 0, 0.9);
+    flex-direction: row;
+    gap: 15px;
 }
 
 /* Play Mode - ▶ / ⏸ */
@@ -226,6 +240,9 @@ body {
     font-size: clamp(0.9rem, 1.3vw, 1.2rem);
     cursor: pointer;
     transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 /* Bottom Bar */
@@ -271,6 +288,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 6px;
 }
 
 .live-btn.hidden {
@@ -364,6 +382,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 6px;
 }
 
 .control-btn {

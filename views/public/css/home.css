@@ -11,6 +11,14 @@ body {
     min-height: 100vh;
 }
 
+.svg-icon {
+    display: inline-block;
+    vertical-align: -0.15em;
+    width: 1em;
+    height: 1em;
+    fill: currentColor;
+}
+
 #app {
     max-width: 1400px;
     margin: 0 auto;

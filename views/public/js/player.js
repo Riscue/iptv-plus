@@ -381,7 +381,7 @@ class IPTVPlayer {
             this.loadVideo(data.bufferUrl);
         } catch (err) {
             this.hideIndicator();
-            this.showIndicator('error-permanent', { message: '❌ Kanal değiştirilemedi' });
+            this.showIndicator('error-permanent', { message: '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> Kanal değiştirilemedi' });
         }
     }
 
@@ -398,10 +398,10 @@ class IPTVPlayer {
     togglePlay() {
         if (this.video.paused) {
             this.video.play().catch(() => {});
-            this.showIndicator('play', { icon: '▶' });
+            this.showIndicator('play', { icon: '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>' });
         } else {
             this.video.pause();
-            this.showIndicator('play', { icon: '⏸' });
+            this.showIndicator('play', { icon: '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>' });
         }
     }
 
@@ -477,7 +477,7 @@ class IPTVPlayer {
         switch (type) {
             case 'seek':
                 var prefix = (data.seconds || 0) > 0 ? '+' : '';
-                var icon = (data.seconds || 0) > 0 ? '⏩' : '⏪';
+                var icon = (data.seconds || 0) > 0 ? '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>' : '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>';
                 overlay.innerHTML = icon + ' ' + prefix + (data.seconds || 0) + ' sn';
                 overlay.classList.add('seek-mode', 'active');
                 this.overlayTimer = setTimeout(function() {
@@ -489,7 +489,7 @@ class IPTVPlayer {
             case 'plan':
                 var diff = data.seconds || 0;
                 var planPrefix = diff > 0 ? '+' : '';
-                var planIcon = diff > 0 ? '⏩' : '⏪';
+                var planIcon = diff > 0 ? '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>' : '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>';
                 var planTime = data.time || this.formatTime(this.video.currentTime);
                 overlay.innerHTML = '<div class="plan-info">' + planIcon + ' ' + planPrefix + diff + ' sn</div>' +
                                    '<div class="plan-time">' + planTime + '</div>';
@@ -503,17 +503,17 @@ class IPTVPlayer {
                 break;
 
             case 'error':
-                overlay.innerHTML = (data.message || '❌ Hata');
+                overlay.innerHTML = (data.message || '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> Hata');
                 overlay.classList.add('error-mode', 'active');
                 break;
 
             case 'error-permanent':
-                overlay.innerHTML = (data.message || '❌ Hata');
+                overlay.innerHTML = (data.message || '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> Hata');
                 overlay.classList.add('error-mode', 'active');
                 break;
 
             case 'live':
-                overlay.innerHTML = '🔴 CANLI';
+                overlay.innerHTML = '<svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg> CANLI';
                 overlay.classList.add('live-mode', 'active');
                 this.overlayTimer = setTimeout(function() {
                     overlay.classList.remove('active');
@@ -522,7 +522,7 @@ class IPTVPlayer {
                 break;
 
             case 'play':
-                overlay.innerHTML = '<span class="play-icon">' + (data.icon || '▶') + '</span>';
+                overlay.innerHTML = '<span class="play-icon">' + (data.icon || '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>') + '</span>';
                 overlay.classList.add('play-mode', 'active');
                 this.overlayTimer = setTimeout(function() {
                     overlay.classList.remove('active');
@@ -1113,11 +1113,11 @@ class IPTVPlayer {
 
         var icon = btnPlayPause.querySelector('.btn-icon');
         if (this.video.paused) {
-            icon.textContent = '▶';
+            icon.innerHTML = '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
             btnPlayPause.classList.add('active');
             btnPlayPause.classList.remove('inactive');
         } else {
-            icon.textContent = '⏸';
+            icon.innerHTML = '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
             btnPlayPause.classList.add('active');
             btnPlayPause.classList.remove('inactive');
         }
