@@ -325,6 +325,33 @@ class IPTVPlayer {
         this.currentChannel = channel;
         this.currentCategory = channel.category || null;
 
+        // Update Watch History (Senkron olarak localStorage tutar)
+        try {
+            var history = {};
+            var stored = localStorage.getItem('iptv-watch-history');
+            if (stored) history = JSON.parse(stored);
+            
+            if (!history[channel.name]) {
+                history[channel.name] = { count: 0, lastWatched: Date.now() };
+            }
+            history[channel.name].count++;
+            history[channel.name].lastWatched = Date.now();
+            
+            // Limit to 9
+            var keys = Object.keys(history);
+            if (keys.length > 9) {
+                var sortedKeys = keys.sort(function(a, b) {
+                    return history[b].lastWatched - history[a].lastWatched;
+                });
+                for (var i = 9; i < sortedKeys.length; i++) {
+                    delete history[sortedKeys[i]];
+                }
+            }
+            localStorage.setItem('iptv-watch-history', JSON.stringify(history));
+        } catch (e) {
+            console.error('Watch history error:', e);
+        }
+
         // Update channel info immediately
         this.updateChannelInfo();
 

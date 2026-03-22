@@ -106,6 +106,19 @@ class HomePage {
         }
         this.watchHistory[channel.name].count++;
         this.watchHistory[channel.name].lastWatched = Date.now();
+        
+        // Sadece son 9 kanalı tut (lastWatched'a göre sıralayıp fazlalıkları sil)
+        var keys = Object.keys(this.watchHistory);
+        if (keys.length > 9) {
+            var self = this;
+            var sortedKeys = keys.sort(function(a, b) {
+                return self.watchHistory[b].lastWatched - self.watchHistory[a].lastWatched;
+            });
+            for (var i = 9; i < sortedKeys.length; i++) {
+                delete this.watchHistory[sortedKeys[i]];
+            }
+        }
+        
         this.saveWatchHistory();
         this.renderRecent();
     }
@@ -244,7 +257,7 @@ class HomePage {
             })
             .filter(function(item) { return item !== null; })
             .sort(function(a, b) {
-                return b.count - a.count;
+                return b.lastWatched - a.lastWatched;
             })
             .slice(0, 9);
 
@@ -279,9 +292,11 @@ class HomePage {
             var globalIndex = self.channels.indexOf(item.channel);
             var isRecording = self.currentRecording && item.name === self.currentRecording.name;
             var recordingBadge = isRecording ? '<div class="recording-badge">● Devam ediyor</div>' : '';
+            var timeStr = new Date(item.lastWatched).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+            var izlenmeMetni = isRecording ? 'Kayıt devam ediyor' : 'Saat: ' + timeStr;
             return '<div class="recent-item' + (isRecording ? ' recording' : '') + '" data-index="' + globalIndex + '" data-recording="' + isRecording + '" tabindex="0">' +
                    '<div class="channel-name">' + item.name + '</div>' +
-                   '<div class="watch-count">' + (isRecording ? 'Kayıt devam ediyor' : item.count + ' izlenme') + '</div>' +
+                   '<div class="watch-count">' + izlenmeMetni + '</div>' +
                    recordingBadge +
                    '</div>';
         }).join('');
