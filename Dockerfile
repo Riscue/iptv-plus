@@ -1,8 +1,8 @@
 FROM node:18-slim
 
-# Install FFmpeg
+# Install FFmpeg and procps (for pkill)
 RUN apt-get update && \
-    apt-get install -y ffmpeg && \
+    apt-get install -y ffmpeg procps && \
     rm -rf /var/lib/apt/lists/*
 
 # Set working directory
