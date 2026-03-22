@@ -123,6 +123,7 @@ class IPTVPlayer {
         this.setupIdleDetection();
         this.setupHeartbeat();
         this.setupVideoListeners();
+        this.setupFullscreenFocusRestore();
     }
 
     setupVideoListeners() {
@@ -633,6 +634,21 @@ class IPTVPlayer {
                 document.msExitFullscreen();
             }
         }
+    }
+
+    setupFullscreenFocusRestore() {
+        var handler = function() {
+            // Fullscreen geçişi sonrası odağı geri al
+            setTimeout(function() {
+                if (!document.activeElement || document.activeElement === document.body || document.activeElement.tagName === 'IFRAME') {
+                    document.body.focus();
+                }
+            }, 100);
+        };
+        document.addEventListener('fullscreenchange', handler);
+        document.addEventListener('webkitfullscreenchange', handler);
+        document.addEventListener('mozfullscreenchange', handler);
+        document.addEventListener('MSFullscreenChange', handler);
     }
 
     updateChannelInfo() {
