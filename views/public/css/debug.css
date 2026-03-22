@@ -1,0 +1,134 @@
+/* ==================== DEBUG PANEL ==================== */
+.debug-panel {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    width: 40vw;
+    max-height: 80vh;
+    background: rgba(0, 0, 0, 0.95);
+    border: 1px solid #444;
+    border-radius: 8px;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    font-size: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.debug-panel.hidden {
+    display: none;
+}
+
+.debug-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background: #222;
+    border-bottom: 1px solid #444;
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+    color: #00d4ff;
+}
+
+.debug-close {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.debug-close:hover {
+    color: #fff;
+}
+
+.debug-content {
+    padding: 10px;
+    overflow-y: auto;
+    max-height: calc(80vh - 45px);
+}
+
+.debug-section {
+    margin-bottom: 15px;
+}
+
+.debug-section:last-child {
+    margin-bottom: 0;
+}
+
+.debug-section h3 {
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.debug-events, .debug-logs {
+    max-height: 200px;
+    overflow-y: auto;
+    background: #111;
+    border-radius: 4px;
+    padding: 8px;
+}
+
+.debug-event-item {
+    padding: 4px 6px;
+    border-bottom: 1px solid #222;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 11px;
+}
+
+.debug-event-item:last-child {
+    border-bottom: none;
+}
+
+.debug-event-time {
+    color: #666;
+}
+
+.debug-event-key {
+    color: #00d4ff;
+}
+
+.debug-event-code {
+    color: #ff6b6b;
+}
+
+.debug-event-which {
+    color: #ffd93d;
+}
+
+.debug-log-item {
+    padding: 4px 6px;
+    border-bottom: 1px solid #222;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 10px;
+    word-break: break-all;
+}
+
+.debug-log-item:last-child {
+    border-bottom: none;
+}
+
+.debug-log-time {
+    color: #666;
+}
+
+.debug-log-info {
+    color: #4ecdc4;
+}
+
+.debug-log-warn {
+    color: #ffd93d;
+}
+
+.debug-log-error {
+    color: #ff6b6b;
+}

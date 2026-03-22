@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IPTV Player - Kanal Seç</title>
     <link rel="stylesheet" href="/public/css/home.css">
+    <link rel="stylesheet" href="/public/css/debug.css">
 </head>
 <body>
     <div id="app">
@@ -48,6 +49,25 @@
         </main>
     </div>
 
+    <!-- Debug Panel (Ctrl/Cmd + Shift + D or Info long press) -->
+    <div id="debug-panel" class="debug-panel hidden">
+        <div class="debug-header">
+            <span>Debug Panel</span>
+            <button id="debug-close" class="debug-close">×</button>
+        </div>
+        <div class="debug-content">
+            <div class="debug-section">
+                <h3>Keyboard Events (Son 20)</h3>
+                <div id="debug-key-events" class="debug-events"></div>
+            </div>
+            <div class="debug-section">
+                <h3>Console Logs (Son 50)</h3>
+                <div id="debug-logs" class="debug-logs"></div>
+            </div>
+        </div>
+    </div>
+
     <script src="/public/js/home.js"></script>
+    <script src="/public/js/debug.js"></script>
 </body>
 </html>
