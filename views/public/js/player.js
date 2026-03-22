@@ -17,6 +17,7 @@ class IPTVPlayer {
         this.currentUrl = null;
         this.bufferStartTime = null;
         this.plannedSeekPosition = null;
+        this.autoFullscreenDone = false;
 
         this.init();
     }
@@ -112,6 +113,15 @@ class IPTVPlayer {
 
     setupVideoListeners() {
         var self = this;
+
+        // First play event - try fullscreen (same user interaction context)
+        this.video.addEventListener('play', function() {
+            if (!self.autoFullscreenDone) {
+                self.autoFullscreenDone = true;
+                self.toggleFullscreen();
+            }
+            self.updatePlayButtons();
+        }, { once: true });
 
         // Click on video to toggle play/pause
         this.video.addEventListener('click', function() {
@@ -412,6 +422,13 @@ class IPTVPlayer {
     toggleFullscreen() {
         var elem = document.getElementById('app');
 
+        // LG webOS TV native API
+        if (window.webOS && webOS.window && webOS.window.setFullScreen) {
+            webOS.window.setFullScreen(true);
+            return;
+        }
+
+        // Standard Fullscreen API
         if (!document.fullscreenElement) {
             if (elem.requestFullscreen) {
                 elem.requestFullscreen();
