@@ -764,7 +764,6 @@ class IPTVPlayer {
                 case 'Escape':
                 case 'Exit':
                     e.preventDefault();
-                    fetch('/api/buffer/stop', { method: 'POST' }).catch(() => {});
                     history.back();
                     break;
 
@@ -784,7 +783,6 @@ class IPTVPlayer {
             // ========== TV REMOTE SPECIAL KEYS ==========
             if (e.keyCode === 1001 || e.keyCode === 1009 || e.keyCode === 461) {
                 e.preventDefault();
-                fetch('/api/buffer/stop', { method: 'POST' }).catch(() => {});
                 history.back();
             }
 
@@ -931,12 +929,11 @@ class IPTVPlayer {
             });
         }
 
-        // Back button - stop recording and go home
+        // Back button - go home (keep recording alive for quick resume)
         var backBtn = document.getElementById('btn-back');
         if (backBtn) {
             backBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                fetch('/api/buffer/stop', { method: 'POST' }).catch(() => {});
                 history.back();
             });
         }

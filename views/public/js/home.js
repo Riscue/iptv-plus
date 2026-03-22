@@ -9,18 +9,30 @@ class HomePage {
         this.searchTimeout = null;
         this.watchHistory = this.loadWatchHistory();
         this.longPressTimer = null;
+        this.currentRecording = null; // Currently recording channel
 
         this.init();
     }
 
     async init() {
         await this.loadData();
+        await this.loadBufferStatus();
         this.setupKeyboardEvents();
         this.setupSearch();
         this.setupNavigation();
+        this.setupPageShowHandler();
         this.renderFavorites();
         this.renderRecent();
         this.renderCategories();
+    }
+
+    setupPageShowHandler() {
+        var self = this;
+        window.addEventListener('pageshow', async function(e) {
+            // Refresh buffer status when returning from player
+            await self.loadBufferStatus();
+            self.renderRecent();
+        });
     }
 
     async loadData() {
@@ -36,6 +48,20 @@ class HomePage {
             console.log('Loaded ' + this.channels.length + ' channels, ' + this.categories.length + ' categories');
         } catch (err) {
             console.error('Failed to load data:', err);
+        }
+    }
+
+    async loadBufferStatus() {
+        try {
+            var res = await fetch('/api/buffer/status');
+            var data = await res.json();
+            if (data.isRecording && data.currentChannel) {
+                this.currentRecording = this.channels.find(function(ch) { return ch.name === data.currentChannel; });
+            } else {
+                this.currentRecording = null;
+            }
+        } catch (err) {
+            this.currentRecording = null;
         }
     }
 
@@ -217,6 +243,28 @@ class HomePage {
             })
             .slice(0, 9);
 
+        // Add currently recording channel at the top if not already in list
+        if (this.currentRecording) {
+            var existingIndex = sortedChannels.findIndex(function(item) { return item.name === self.currentRecording.name; });
+            var recordingItem;
+            if (existingIndex !== -1) {
+                // Remove from current position
+                recordingItem = sortedChannels.splice(existingIndex, 1)[0];
+            } else {
+                // Create new item
+                recordingItem = {
+                    name: this.currentRecording.name,
+                    count: 0,
+                    lastWatched: Date.now(),
+                    channel: this.currentRecording
+                };
+            }
+            // Add at the beginning
+            sortedChannels.unshift(recordingItem);
+            // Keep only 9 items
+            sortedChannels = sortedChannels.slice(0, 9);
+        }
+
         if (sortedChannels.length === 0) {
             grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; padding: 20px;">Henüz kanal izlenmedi</div>';
             return;
@@ -224,9 +272,12 @@ class HomePage {
 
         grid.innerHTML = sortedChannels.map(function(item) {
             var globalIndex = self.channels.indexOf(item.channel);
-            return '<div class="recent-item" data-index="' + globalIndex + '" tabindex="0">' +
+            var isRecording = self.currentRecording && item.name === self.currentRecording.name;
+            var recordingBadge = isRecording ? '<div class="recording-badge">● Devam ediyor</div>' : '';
+            return '<div class="recent-item' + (isRecording ? ' recording' : '') + '" data-index="' + globalIndex + '" data-recording="' + isRecording + '" tabindex="0">' +
                    '<div class="channel-name">' + item.name + '</div>' +
-                   '<div class="watch-count">' + item.count + ' izlenme</div>' +
+                   '<div class="watch-count">' + (isRecording ? 'Kayıt devam ediyor' : item.count + ' izlenme') + '</div>' +
+                   recordingBadge +
                    '</div>';
         }).join('');
 
@@ -235,7 +286,12 @@ class HomePage {
             var item = e.target.closest('.recent-item');
             if (item) {
                 var index = parseInt(item.dataset.index);
-                self.playChannel(self.channels[index]);
+                var isRecording = item.dataset.recording === 'true';
+                if (isRecording) {
+                    self.resumeChannel(self.channels[index]);
+                } else {
+                    self.playChannel(self.channels[index]);
+                }
             }
         };
 
@@ -276,7 +332,12 @@ class HomePage {
                 var item = e.target.closest('.recent-item');
                 if (item) {
                     var index = parseInt(item.dataset.index);
-                    self.playChannel(self.channels[index]);
+                    var isRecording = item.dataset.recording === 'true';
+                    if (isRecording) {
+                        self.resumeChannel(self.channels[index]);
+                    } else {
+                        self.playChannel(self.channels[index]);
+                    }
                 }
             }
         };
@@ -615,6 +676,13 @@ class HomePage {
                 }
             }
         });
+    }
+
+    resumeChannel(channel) {
+        // Resume playing without killing the recording - just go to player
+        console.log('Resuming channel:', channel.name, '(keeping recording alive)');
+        this.addToWatchHistory(channel);
+        window.location.href = '/player';
     }
 
     playChannel(channel) {

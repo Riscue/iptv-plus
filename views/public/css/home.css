@@ -251,6 +251,29 @@ section h2 {
     margin-top: 4px;
 }
 
+.recent-item.recording {
+    background: rgba(0, 200, 100, 0.2);
+    border-color: rgba(0, 200, 100, 0.5);
+}
+
+.recent-item.recording:hover,
+.recent-item.recording:focus {
+    background: rgba(0, 200, 100, 0.4);
+    border-color: #00c864;
+}
+
+.recording-badge {
+    font-size: 0.7rem;
+    color: #00ff88;
+    margin-top: 4px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
 /* Categories Grid */
 #categories-grid {
     display: grid;
