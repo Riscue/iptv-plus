@@ -802,21 +802,17 @@ class IPTVPlayer {
 
             // ========== COLOR BUTTONS ==========
             switch(e.keyCode) {
-                case 403:
+                case 403: // Red - Live
                     e.preventDefault();
                     self.goToLive();
                     break;
-                case 404:
-                    e.preventDefault();
-                    self.video.currentTime = Math.min(self.video.duration || 0, self.video.currentTime + 60);
-                    self.showSeekIndicator('+1 dk');
+                case 404: // Green - unused
                     break;
-                case 405:
+                case 405: // Yellow - Fullscreen
                     e.preventDefault();
-                    self.video.currentTime = Math.max(0, self.video.currentTime - 60);
-                    self.showSeekIndicator('-1 dk');
+                    self.toggleFullscreen();
                     break;
-                case 406:
+                case 406: // Blue - Channels
                     e.preventDefault();
                     self.toggleChannelList();
                     break;
