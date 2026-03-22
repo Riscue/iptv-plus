@@ -633,14 +633,24 @@ class HomePage {
 
             // Arrow navigation
             if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-                // If in search input and pressing down, move to first result
+                // If in search input
                 if (document.activeElement === input) {
-                    if (e.key === 'ArrowDown' && input.value.length >= 2) {
+                    if (e.key === 'ArrowDown') {
                         e.preventDefault();
-                        var firstChannel = document.querySelector('.channel-item');
-                        if (firstChannel) {
-                            firstChannel.focus();
-                            firstChannel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        if (input.value.length >= 2) {
+                            // Arama sonuçları varsa ilk sonuca geç
+                            var firstChannel = document.querySelector('.channel-item');
+                            if (firstChannel) {
+                                firstChannel.focus();
+                                firstChannel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        } else {
+                            // Arama yoksa favorilere geç
+                            var firstFavorite = document.querySelector('.favorite-item:not(.empty)');
+                            if (firstFavorite) {
+                                firstFavorite.focus();
+                                firstFavorite.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
                         }
                     }
                     return;
@@ -703,12 +713,23 @@ class HomePage {
                             var nextItems = Array.from(targetGrid.children).filter(function(el) {
                                 return !el.classList.contains('empty') && el.offsetParent !== null;
                             });
-                            target = Math.min(col, nextItems.length - 1);
+
+                            // Recent'ten Categories'e geçişte her zaman ilk kategoriye (ilk eleman)
+                            if (gridIdx === 1) {
+                                target = 0;
+                            } else {
+                                // Favori → Recent ve diğer geçişlerde column hizalaması korunsun
+                                target = Math.min(col, nextItems.length - 1);
+                            }
                         } else target = idx;
                     }
                 } else if (e.key === 'ArrowUp') {
                     if (row > 0) {
                         target = idx - cols;
+                    } else if (gridIdx === 0) {
+                        // Favorites grid'te yukarı ok → search input'a focus
+                        input.focus();
+                        return;
                     } else if (gridIdx > 0) {
                         targetGrid = grids[gridIdx - 1];
                         var prevItems = Array.from(targetGrid.children).filter(function(el) {
