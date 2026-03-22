@@ -109,7 +109,7 @@ body {
 }
 
 section h2 {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     margin-bottom: 20px;
     color: #00d4ff;
     border-bottom: 2px solid rgba(0, 212, 255, 0.3);
@@ -125,7 +125,7 @@ section h2 {
 }
 
 .favorite-item {
-    min-height: 100px;
+    min-height: 110px;
     background: linear-gradient(135deg, #2d4a6f 0%, #1a2e4d 100%);
     border: 2px solid rgba(0, 212, 255, 0.3);
     border-radius: 10px;
@@ -137,6 +137,7 @@ section h2 {
     transition: all 0.3s;
     position: relative;
     overflow: hidden;
+    padding: 8px;
 }
 
 .favorite-item:hover,
@@ -160,12 +161,12 @@ section h2 {
     position: absolute;
     top: 5px;
     left: 8px;
-    font-size: 1.2rem;
+    font-size: 1.4rem;
     font-weight: bold;
     color: #00d4ff;
     background: rgba(0, 0, 0, 0.5);
-    width: 25px;
-    height: 25px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -173,9 +174,9 @@ section h2 {
 }
 
 .favorite-item .channel-name {
-    font-size: 0.85rem;
+    font-size: 1rem;
     text-align: center;
-    padding: 10px;
+    padding: 12px 10px 10px;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
@@ -242,7 +243,7 @@ section h2 {
 }
 
 .recent-item .channel-name {
-    font-size: 0.85rem;
+    font-size: 1rem;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
@@ -317,14 +318,14 @@ section h2 {
 }
 
 .category-name {
-    font-size: 1.3rem;
+    font-size: 1.5rem;
     font-weight: 600;
     color: #fff;
     margin-bottom: 8px;
 }
 
 .category-count {
-    font-size: 0.9rem;
+    font-size: 1.1rem;
     color: rgba(255, 255, 255, 0.6);
 }
 
@@ -367,7 +368,7 @@ section h2 {
 }
 
 .channel-item .channel-name {
-    font-size: 0.85rem;
+    font-size: 1rem;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;

@@ -272,12 +272,10 @@ class HomePage {
         grid.innerHTML = sortedChannels.map(function(item) {
             var globalIndex = self.channels.indexOf(item.channel);
             var isRecording = self.currentRecording && item.name === self.currentRecording.name;
-            var recordingBadge = isRecording ? '<div class="recording-badge"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg> Devam ediyor</div>' : '';
             var timeStr = new Date(item.lastWatched).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-            var izlenmeMetni = isRecording ? 'Kayıt devam ediyor' : 'Saat: ' + timeStr;
+            var recordingBadge = isRecording ? '<div class="recording-badge"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg> Devam ediyor</div>' : '<div class="watch-count">' + 'Saat: ' + timeStr + '</div>';
             return '<div class="recent-item' + (isRecording ? ' recording' : '') + '" data-index="' + globalIndex + '" data-recording="' + isRecording + '" tabindex="0">' +
                    '<div class="channel-name">' + item.name + '</div>' +
-                   '<div class="watch-count">' + izlenmeMetni + '</div>' +
                    recordingBadge +
                    '</div>';
         }).join('');
