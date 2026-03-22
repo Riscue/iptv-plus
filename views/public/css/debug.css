@@ -70,6 +70,27 @@
     text-transform: uppercase;
 }
 
+.debug-footer {
+    padding: 8px 15px;
+    background: #1a1a1a;
+    border-top: 1px solid #333;
+    border-radius: 0 0 8px 8px;
+    font-size: 10px;
+    font-family: 'Monaco', 'Menlo', monospace;
+}
+
+#debug-build-info {
+    color: #888;
+}
+
+.debug-build-label {
+    color: #888;
+}
+
+#debug-build-info .debug-build-value {
+    color: #00d4ff;
+}
+
 .debug-events, .debug-logs {
     max-height: 200px;
     overflow-y: auto;

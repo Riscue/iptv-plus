@@ -6,6 +6,7 @@
     var debugPanel = document.getElementById('debug-panel');
     var debugKeyEvents = document.getElementById('debug-key-events');
     var debugLogs = document.getElementById('debug-logs');
+    var debugBuildInfo = document.getElementById('debug-build-info');
     var debugClose = document.getElementById('debug-close');
 
     if (!debugPanel) return;
@@ -16,10 +17,45 @@
     var maxLogs = 50;
     var longPressTimer = null;
     var LONG_PRESS_DURATION = 2000; // 2 seconds
+    var buildInfo = null;
 
     // Toggle debug panel
     function toggleDebugPanel() {
         debugPanel.classList.toggle('hidden');
+    }
+
+    // Load build info
+    function loadBuildInfo() {
+        if (!debugBuildInfo) return;
+
+        fetch('/api/build-info')
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                buildInfo = data;
+                renderBuildInfo();
+            })
+            .catch(function(err) {
+                console.error('[DEBUG] Failed to load build info:', err);
+                debugBuildInfo.innerHTML = '<div class="debug-build-row"><span class="debug-build-value">Build info unavailable</span></div>';
+            });
+    }
+
+    // Render build info
+    function renderBuildInfo() {
+        if (!debugBuildInfo || !buildInfo) return;
+
+        var buildTime = buildInfo.buildDate ? new Date(buildInfo.buildDate).toLocaleString('tr-TR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        }) : 'N/A';
+
+        debugBuildInfo.innerHTML =
+            '<span class="debug-build-label">Branch:</span> <span class="debug-build-value">' + escapeHtml(buildInfo.branch) + '</span> | ' +
+            '<span class="debug-build-label">Commit:</span> <span class="debug-build-value">' + escapeHtml(buildInfo.commit) + '</span> | ' +
+            '<span class="debug-build-label">Build:</span> <span class="debug-build-value">' + escapeHtml(buildTime) + '</span>';
     }
 
     // Log key event
@@ -179,6 +215,9 @@
     if (debugClose) {
         debugClose.addEventListener('click', toggleDebugPanel);
     }
+
+    // Load build info on init
+    loadBuildInfo();
 
     console.log('[DEBUG] Debug panel initialized. PC: Ctrl/Cmd + Shift + D | TV: Info tuşuna 2 sn basılı tut.');
 })();

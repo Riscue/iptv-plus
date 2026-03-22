@@ -9,9 +9,6 @@ module.exports = {
     bufferDir: process.env.BUFFER_DIR || "/tmp/iptv-buffer",
     bufferDurationMinutes: 180, // 3 saat
 
-    // Server
-    port: process.env.PORT || 3000,
-
     // Segment settings
     segmentDuration: 5, // seconds
     maxRetries: 3

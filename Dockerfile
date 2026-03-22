@@ -1,18 +1,29 @@
 FROM node:18-slim
 
-# Install FFmpeg and procps (for pkill)
+# Install FFmpeg, procps (for pkill), and Git (for build info)
 RUN apt-get update && \
-    apt-get install -y ffmpeg procps && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends \
+        ffmpeg \
+        procps \
+        git && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files and scripts
 COPY package.json ./
+COPY scripts/ ./scripts/
 
-# Install dependencies
-RUN npm install --omit=dev
+# Install dependencies and clean up
+RUN npm install --omit=dev && \
+    npm cache clean --force && \
+    rm -rf ~/.npm /root/.npm
+
+# Generate build info (safe, no user input)
+RUN mkdir -p src && \
+    npm run build:info && \
+    rm -rf scripts/
 
 # Copy application files
 COPY src/ ./src/

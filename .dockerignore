@@ -1,9 +1,37 @@
+# Dependencies
 node_modules/
-tmp/
-
 package-lock.json
-.env*
-*.log
-.DS_Store
+
+# Buffer and temporary files
+tmp/
 *.m3u8
 *.ts
+
+# Environment
+.env
+.env.*
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+
+# Build artifacts (will be generated during Docker build)
+build-info.json
+src/build-info.json
+
+# Documentation
+README.md
+*.md

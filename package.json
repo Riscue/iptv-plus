@@ -4,6 +4,7 @@
   "description": "IPTV Player with TV remote control support and DVR functionality",
   "main": "src/index.js",
   "scripts": {
+    "build:info": "node scripts/build-info.js",
     "start": "node src/index.js",
     "dev": "node --watch src/index.js"
   },

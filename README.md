@@ -85,7 +85,6 @@ docker run -d \
 |----------------|-------------|------------------|---------------------------------------------|
 | `PLAYLIST_URL` | Evet        | -                | IP TV Sağlayıcınızın M3U8 linki             |
 | `BUFFER_DIR`   | Hayır       | /tmp/iptv-buffer | FFMPEG'in stream dosyalarını yazacağı dizin |
-| `PORT`         | Hayır       | 3000             | Sunucunun yayın yapacağı Port numarası      |
 | `TZ`           | Hayır       | Europe/Istanbul  | Uygulama içi Saat / Zaman Dilimi            |
 
 ## 📝 Kullanım Senaryoları

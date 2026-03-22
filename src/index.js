@@ -5,7 +5,7 @@ const fs = require('fs');
 
 const ChannelController = require('./channel-controller');
 const BufferController = require('./buffer-controller');
-const { bufferDir, port } = require('./constants');
+const { bufferDir } = require('./constants');
 
 // Initialize directories
 fs.mkdirSync(bufferDir, { recursive: true });
@@ -37,6 +37,23 @@ app.get('/api/buffer/status', BufferController.getStatus);
 app.get('/api/buffer/heartbeat', BufferController.heartbeat);
 app.post('/api/buffer/stop', BufferController.stop);
 
+// Build info endpoint
+app.get('/api/build-info', (req, res) => {
+    try {
+        const buildInfoPath = path.join(__dirname, 'build-info.json');
+        const buildInfo = JSON.parse(fs.readFileSync(buildInfoPath, 'utf-8'));
+        res.json(buildInfo);
+    } catch (err) {
+        // Build info not found, return basic info
+        res.json({
+            commit: 'unknown',
+            branch: 'unknown',
+            commitDate: null,
+            buildDate: new Date().toISOString()
+        });
+    }
+});
+
 // Routes
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../views/index.html'));
@@ -65,10 +82,10 @@ process.on('SIGINT', () => {
 });
 
 // Start server
-app.listen(port, () => {
+app.listen(3000, () => {
     console.log('=================================');
     console.log('[SERVER] IPTV Player Started');
-    console.log('[SERVER] URL: http://localhost:' + port);
+    console.log('[SERVER] URL: http://localhost:3000');
     console.log('[SERVER] Buffer: ' + bufferDir);
     console.log('=================================');
 });
