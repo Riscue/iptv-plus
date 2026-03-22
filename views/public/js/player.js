@@ -18,6 +18,20 @@ class IPTVPlayer {
         this.bufferStartTime = null;
         this.plannedSeekPosition = null;
         this.autoFullscreenDone = false;
+        this.overlayTimer = null;
+        this.overlayType = null;
+
+        // Öncelik sırası: Yüksek sayı = yüksek öncelik
+        // User-initiated (seek, live, play) loading'i geçer
+        this.indicatorPriority = {
+            'loading': 1,
+            'error': 5,
+            'error-permanent': 10,
+            'plan': 3,
+            'seek': 4,
+            'live': 4,
+            'play': 4
+        };
 
         this.init();
     }
@@ -85,7 +99,7 @@ class IPTVPlayer {
         console.log('Supported codecs:', support);
 
         if (support.length === 0) {
-            this.showError('Video codec desteklenmiyor!');
+            this.showIndicator('error-permanent', { message: 'Video codec desteklenmiyor!' });
         }
     }
 
@@ -138,19 +152,17 @@ class IPTVPlayer {
 
         // Show loading when waiting for buffer during playback
         this.video.addEventListener('waiting', function() {
-            console.log('[PLAYER] Video waiting for buffer...');
-            self.showLoading(true);
+            self.showIndicator('loading', { message: 'Yükleniyor...' });
         });
 
         // Hide loading when playing resumes
         this.video.addEventListener('playing', function() {
-            console.log('[PLAYER] Video playing');
-            self.showLoading(false);
+            self.hideIndicator('loading');
         });
 
         // Also hide loading on canplay (enough data to play)
         this.video.addEventListener('canplay', function() {
-            self.showLoading(false);
+            self.hideIndicator('loading');
         });
 
         // Focus on any focusable element shows UI
@@ -166,7 +178,7 @@ class IPTVPlayer {
         if (!this.currentChannel) return;
 
         var bufferUrl = '/buffer/' + this.getSafeName(this.currentChannel.name) + '/live.m3u8';
-        this.showLoading(true);
+        this.showIndicator('loading', { message: 'Yükleniyor...' });
 
         this.waitForBuffer(bufferUrl)
             .then(() => {
@@ -179,8 +191,8 @@ class IPTVPlayer {
                 return this.loadVideo(bufferUrl);
             })
             .catch(() => {
-                this.showLoading(false);
-                this.showError('Kanal yuklenemedi');
+                this.hideIndicator();
+                this.showIndicator('error-permanent', { message: 'Kanal yüklenemedi' });
             });
     }
 
@@ -223,46 +235,75 @@ class IPTVPlayer {
             if (!firstFragmentLoaded) {
                 firstFragmentLoaded = true;
                 this.isLoading = false;
-                this.showLoading(false);
+                this.hideIndicator('loading');
+                this.hideIndicator('error');
                 this.video.play().catch(() => {});
                 this.updatePlayButtons();
             } else {
                 // Buffer recovered during playback
-                this.showLoading(false);
+                this.hideIndicator('loading');
+                this.hideIndicator('error');
             }
         });
 
-        // Buffer stalled - show loading during playback
+        // Buffer stalled - show waiting indicator
         this.hls.on(Hls.Events.BUFFER_STALLED, () => {
             if (firstFragmentLoaded) {
-                this.showLoading(true);
+                this.showIndicator('loading', { message: '⏳ Bekleniyor...' });
             }
+        });
+
+        // Buffer flushed / appended = buffer recovered
+        this.hls.on(Hls.Events.BUFFER_APPENDED, () => {
+            this.hideIndicator('loading');
         });
 
         this.hls.on(Hls.Events.ERROR, (event, data) => {
-            if (data.fatal) {
-                this.isLoading = false;
-                this.updatePlayButtons();
-                switch (data.type) {
-                    case Hls.ErrorTypes.NETWORK_ERROR:
-                        console.error('[HLS] Network error:', data);
-                        this.showError('Baglanti hatasi - Tekrar deneniyor...');
-                        this.hls.startLoad();
+            var details = data.details || '';
+
+            // ===== NON-FATAL ERRORS (geçici, retry ile düzelir) =====
+            if (!data.fatal) {
+                switch (details) {
+                    case 'fragLoadError':
+                        this.showIndicator('error', { message: '⚠️ Segment yüklenemedi' });
                         break;
-                    case Hls.ErrorTypes.MEDIA_ERROR:
-                        console.error('[HLS] Media error:', data);
-                        this.showError('Codec hatasi - Kurtariliyor...');
-                        this.hls.recoverMediaError();
-                        break;
-                    default:
-                        console.error('[HLS] Fatal error:', data);
-                        var errorMsg = 'Oynatma hatasi: ' + (data.details || data.type || 'Bilinmeyen');
-                        if (data.details === 'decoderError') {
-                            errorMsg = 'Codec desteklenmiyor! TV bu formati oynatamiyor.';
-                        }
-                        this.showError(errorMsg);
+                    case 'fragLoadTimeOut':
+                    case 'manifestLoadTimeOut':
+                        this.showIndicator('error', { message: '⏳ Zaman aşımı - Yükleniyor...' });
                         break;
                 }
+                return;
+            }
+
+            // ===== FATAL ERRORS =====
+            this.isLoading = false;
+            this.updatePlayButtons();
+
+            switch (data.type) {
+                case Hls.ErrorTypes.NETWORK_ERROR:
+                    console.error('[HLS] Network error:', details);
+                    if (details === 'manifestLoadError') {
+                        this.showIndicator('error', { message: '❌ Playlist yüklenemedi' });
+                    } else {
+                        this.showIndicator('error', { message: '❌ Bağlantı hatası - Tekrar deneniyor...' });
+                    }
+                    this.hls.startLoad();
+                    break;
+
+                case Hls.ErrorTypes.MEDIA_ERROR:
+                    console.error('[HLS] Media error:', details);
+                    if (details === 'bufferDecodingError' || details === 'bufferCodecError' || details === 'manifestIncompatibleCodecsError') {
+                        this.showIndicator('error-permanent', { message: '❌ Codec desteklenmiyor! TV bu formatı oynatamıyor.' });
+                    } else {
+                        this.showIndicator('error', { message: '❌ Oynatma hatası - Kurtarılıyor...' });
+                        this.hls.recoverMediaError();
+                    }
+                    break;
+
+                default:
+                    console.error('[HLS] Fatal error:', details);
+                    this.showIndicator('error-permanent', { message: '❌ Oynatma hatası - Kanal değiştirin' });
+                    break;
             }
         });
     }
@@ -270,7 +311,7 @@ class IPTVPlayer {
     setupNativeHls(url) {
         this.video.src = url;
         this.video.addEventListener('loadedmetadata', () => {
-            this.showLoading(false);
+            this.hideIndicator();
             this.video.play().catch(() => {});
             this.isLoading = false;
         }, { once: true });
@@ -295,7 +336,9 @@ class IPTVPlayer {
         this.video.pause();
         this.video.removeAttribute('src');
 
-        this.showLoading(true);
+        // Kanal değiştiğinde kalıcı hataları temizle
+        this.overlayType = null;
+        this.showIndicator('loading', { message: 'Yükleniyor...' });
 
         try {
             var changeUrl = '/api/channel/change?index=' + index;
@@ -310,8 +353,8 @@ class IPTVPlayer {
             await this.waitForBuffer(data.bufferUrl);
             this.loadVideo(data.bufferUrl);
         } catch (err) {
-            this.showLoading(false);
-            this.showError('Kanal degistirilemedi');
+            this.hideIndicator();
+            this.showIndicator('error-permanent', { message: '❌ Kanal değiştirilemedi' });
         }
     }
 
@@ -328,8 +371,10 @@ class IPTVPlayer {
     togglePlay() {
         if (this.video.paused) {
             this.video.play().catch(() => {});
+            this.showIndicator('play', { icon: '▶' });
         } else {
             this.video.pause();
+            this.showIndicator('play', { icon: '⏸' });
         }
     }
 
@@ -345,50 +390,135 @@ class IPTVPlayer {
             }
 
             // Show feedback
-            this.showLiveIndicator();
+            this.showIndicator('live');
         }
     }
 
     seekBack() {
-        this.video.currentTime = Math.max(0, this.video.currentTime - this.seekAmount);
-        this.showSeekIndicator(-this.seekAmount);
+        var newTime = Math.max(0, this.video.currentTime - this.seekAmount);
+        this.video.currentTime = newTime;
+        this.showIndicator('seek', { seconds: -this.seekAmount });
     }
 
     seekForward() {
-        this.video.currentTime = Math.min(this.video.duration || 0, this.video.currentTime + this.seekAmount);
-        this.showSeekIndicator(this.seekAmount);
+        var newTime = Math.min(this.video.duration || 0, this.video.currentTime + this.seekAmount);
+        this.video.currentTime = newTime;
+        this.showIndicator('seek', { seconds: this.seekAmount });
     }
 
-    showLiveIndicator() {
-        var overlay = document.getElementById('video-overlay');
-        overlay.textContent = 'CANLI';
-        overlay.classList.add('show');
-        setTimeout(() => overlay.classList.remove('show'), 1000);
+    formatTime(seconds) {
+        if (!seconds || isNaN(seconds)) return '0:00';
+        var mins = Math.floor(seconds / 60);
+        var secs = Math.floor(seconds % 60);
+        return mins + ':' + (secs < 10 ? '0' : '') + secs;
     }
 
-    showSeekIndicator(seconds) {
+    // ==================== INDICATOR SYSTEM ====================
+    // Öncelik tabanlı indikatör sistemi
+    // Yüksek öncelikli indikatörler (seek, live, play) düşük önceliklileri (loading) geçer
+    // type: 'seek' | 'plan' | 'loading' | 'error' | 'error-permanent' | 'live' | 'play'
+    showIndicator(type, data) {
+        data = data || {};
         var overlay = document.getElementById('video-overlay');
-        var prefix = seconds > 0 ? '+' : '';
-        overlay.textContent = prefix + seconds + ' sn';
-        overlay.classList.add('show');
-        setTimeout(() => overlay.classList.remove('show'), 1000);
+        if (!overlay) return;
+
+        // Kalıcı hata varsa sadece kanal değişikliği temizler
+        if (this.overlayType === 'error-permanent' && type !== 'error-permanent') {
+            return;
+        }
+
+        // Öncelik kontrolü: düşük öncelikli yeni indikatör, yüksek önceliklinin üzerine yazamaz
+        var currentPriority = this.indicatorPriority[this.overlayType] || 0;
+        var newPriority = this.indicatorPriority[type] || 0;
+        if (this.overlayType && newPriority < currentPriority) {
+            return;
+        }
+
+        // Mevcut timer'ı temizle
+        if (this.overlayTimer) {
+            clearTimeout(this.overlayTimer);
+            this.overlayTimer = null;
+        }
+
+        // Overlay state sıfırla
+        overlay.className = '';
+        overlay.innerHTML = '';
+        this.overlayType = type;
+
+        var self = this;
+
+        switch (type) {
+            case 'seek':
+                var prefix = (data.seconds || 0) > 0 ? '+' : '';
+                var icon = (data.seconds || 0) > 0 ? '⏩' : '⏪';
+                overlay.innerHTML = icon + ' ' + prefix + (data.seconds || 0) + ' sn';
+                overlay.classList.add('seek-mode', 'active');
+                this.overlayTimer = setTimeout(function() {
+                    overlay.classList.remove('active');
+                    self.overlayType = null;
+                }, 1000);
+                break;
+
+            case 'plan':
+                var diff = data.seconds || 0;
+                var planPrefix = diff > 0 ? '+' : '';
+                var planIcon = diff > 0 ? '⏩' : '⏪';
+                var planTime = data.time || this.formatTime(this.video.currentTime);
+                overlay.innerHTML = '<div class="plan-info">' + planIcon + ' ' + planPrefix + diff + ' sn</div>' +
+                                   '<div class="plan-time">' + planTime + '</div>';
+                overlay.classList.add('plan-mode', 'active');
+                break;
+
+            case 'loading':
+                overlay.innerHTML = '<div class="loading-content"><div class="spinner"></div>' +
+                                   '<div class="loading-text">' + (data.message || 'Yükleniyor...') + '</div></div>';
+                overlay.classList.add('loading-mode', 'active');
+                break;
+
+            case 'error':
+                overlay.innerHTML = (data.message || '❌ Hata');
+                overlay.classList.add('error-mode', 'active');
+                break;
+
+            case 'error-permanent':
+                overlay.innerHTML = (data.message || '❌ Hata');
+                overlay.classList.add('error-mode', 'active');
+                break;
+
+            case 'live':
+                overlay.innerHTML = '🔴 CANLI';
+                overlay.classList.add('live-mode', 'active');
+                this.overlayTimer = setTimeout(function() {
+                    overlay.classList.remove('active');
+                    self.overlayType = null;
+                }, 500);
+                break;
+
+            case 'play':
+                overlay.innerHTML = '<span class="play-icon">' + (data.icon || '▶') + '</span>';
+                overlay.classList.add('play-mode', 'active');
+                this.overlayTimer = setTimeout(function() {
+                    overlay.classList.remove('active');
+                    self.overlayType = null;
+                }, 500);
+                break;
+        }
     }
 
-    showPlannedSeekIndicator(plannedSeconds) {
+    // hideIndicator(filterType) - sadece belirtilen tip aktifse gizler
+    // filterType verilmezse her şeyi gizler
+    hideIndicator(filterType) {
+        if (filterType && this.overlayType !== filterType) {
+            return; // Başka tip aktif, dokunma
+        }
         var overlay = document.getElementById('video-overlay');
-        var currentTimeEl = document.getElementById('current-time');
-
-        // Calculate relative time difference (rounded to integer)
-        var diff = Math.round(plannedSeconds - this.video.currentTime);
-        var prefix = diff > 0 ? '+' : '';
-        overlay.textContent = prefix + diff + ' sn';
-        overlay.classList.add('show');
-
-        // Also update time display with planned absolute time
-        if (currentTimeEl && this.bufferStartTime) {
-            var videoTime = new Date(this.bufferStartTime + (Math.round(plannedSeconds) * 1000));
-            var videoTimeStr = videoTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            currentTimeEl.textContent = videoTimeStr;
+        if (overlay) {
+            overlay.classList.remove('active');
+        }
+        this.overlayType = null;
+        if (this.overlayTimer) {
+            clearTimeout(this.overlayTimer);
+            this.overlayTimer = null;
         }
     }
 
@@ -486,23 +616,6 @@ class IPTVPlayer {
         }
 
         throw new Error('Buffer timeout');
-    }
-
-    showLoading(show) {
-        var overlay = document.getElementById('video-overlay');
-        if (show) {
-            overlay.textContent = '⏳ Yükleniyor...';
-            overlay.classList.add('show');
-        } else {
-            overlay.classList.remove('show');
-        }
-    }
-
-    showError(message) {
-        var overlay = document.getElementById('video-overlay');
-        overlay.textContent = '❌ ' + message;
-        overlay.classList.add('show');
-        setTimeout(() => overlay.classList.remove('show'), 3000);
     }
 
     getSafeName(name) {
@@ -723,7 +836,11 @@ class IPTVPlayer {
                         // Snap to nearest 10 seconds
                         plannedTime = Math.round(plannedTime / 10) * 10;
                         self.plannedSeekPosition = plannedTime;
-                        self.showPlannedSeekIndicator(plannedTime);
+                        var diff = Math.round(plannedTime - self.video.currentTime);
+                        var targetTime = self.bufferStartTime ?
+                            new Date(self.bufferStartTime + (Math.round(plannedTime) * 1000)).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) :
+                            self.formatTime(plannedTime);
+                        self.showIndicator('plan', { seconds: diff, time: targetTime });
                         self.updateProgressIndicator(plannedTime);
                     } else if (currentRow !== -1 && rows[currentRow] && rows[currentRow].length > 0) {
                         // Navigate within button rows
@@ -747,7 +864,11 @@ class IPTVPlayer {
                         // Snap to nearest 10 seconds
                         plannedTime = Math.round(plannedTime / 10) * 10;
                         self.plannedSeekPosition = plannedTime;
-                        self.showPlannedSeekIndicator(plannedTime);
+                        var diff = Math.round(plannedTime - self.video.currentTime);
+                        var targetTime = self.bufferStartTime ?
+                            new Date(self.bufferStartTime + (Math.round(plannedTime) * 1000)).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) :
+                            self.formatTime(plannedTime);
+                        self.showIndicator('plan', { seconds: diff, time: targetTime });
                         self.updateProgressIndicator(plannedTime);
                     } else if (currentRow !== -1 && rows[currentRow] && rows[currentRow].length > 0) {
                         // Navigate within button rows
@@ -767,7 +888,7 @@ class IPTVPlayer {
                         if (self.plannedSeekPosition !== null) {
                             self.video.currentTime = self.plannedSeekPosition;
                             self.plannedSeekPosition = null;
-                            self.showSeekIndicator(Math.round(self.video.currentTime) + ' sn');
+                            self.hideIndicator(); // Hide planning indicator
                         } else {
                             self.togglePlay();
                         }
@@ -922,8 +1043,8 @@ class IPTVPlayer {
                 var rect = progressBar.getBoundingClientRect();
                 var percent = (e.clientX - rect.left) / rect.width;
                 if (self.video.duration) {
-                    self.video.currentTime = percent * self.video.duration;
-                    self.showSeekIndicator(Math.round(percent * 100) + '%');
+                    var newTime = percent * self.video.duration;
+                    self.video.currentTime = newTime;
                 }
             });
 
@@ -934,12 +1055,11 @@ class IPTVPlayer {
                 self.updateProgress(); // Reset progress indicator
             });
 
-            // Blur resets planned seek
+            // Blur resets planned seek and hides indicator
             progressBar.addEventListener('blur', function() {
                 self.plannedSeekPosition = null;
                 self.updateProgress(); // Reset progress indicator
-                var overlay = document.getElementById('video-overlay');
-                overlay.classList.remove('show');
+                self.hideIndicator();
             });
         }
 
@@ -1040,6 +1160,8 @@ class IPTVPlayer {
         var items = document.getElementById('channel-items');
         if (!items) return;
 
+        var self = this;
+
         // Only show channels from current category
         var filtered = this.channels;
         if (this.currentCategory) {
@@ -1054,7 +1176,6 @@ class IPTVPlayer {
             });
         }
 
-        var self = this;
         items.innerHTML = filtered.map(function(ch) {
             var idx = self.channels.indexOf(ch);
             return '<div class="channel-item" data-index="' + idx + '" tabindex="0">' + ch.name + '</div>';

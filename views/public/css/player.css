@@ -36,42 +36,139 @@ body {
     object-fit: contain;
 }
 
+/* ==================== INDICATOR SYSTEM ==================== */
+
+/* Base Overlay */
 #video-overlay {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: clamp(3rem, 6vw, 5rem);
+    font-size: clamp(2rem, 4vw, 3.5rem);
     font-weight: bold;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+    text-shadow: 0 2px 15px rgba(0, 0, 0, 0.9);
     opacity: 0;
     transition: opacity 0.3s;
     pointer-events: none;
     z-index: 10;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
-#video-overlay.show {
-    opacity: 1;
+/* Active state (visible) */
+#video-overlay.active {
+    opacity: 1 !important;
 }
 
-/* Loading spinner animation */
-#video-overlay::before {
-    content: '';
-    display: inline-block;
-    width: 30px;
-    height: 30px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #00d4ff;
+/* Combined selectors for all modes */
+#video-overlay.active.seek-mode,
+#video-overlay.active.plan-mode,
+#video-overlay.active.loading-mode,
+#video-overlay.active.error-mode,
+#video-overlay.active.live-mode,
+#video-overlay.active.play-mode {
+    opacity: 1 !important;
+}
+
+/* Seek Mode - Quick Seek: ⏪ -10 sn */
+#video-overlay.seek-mode {
+    color: #00d4ff;
+    text-shadow: 0 0 20px rgba(0, 212, 255, 0.8), 0 2px 15px rgba(0, 0, 0, 0.9);
+    background: rgba(0, 20, 40, 0.7);
+    padding: clamp(10px, 1.5vh, 20px) clamp(20px, 3vw, 35px);
+    border-radius: 10px;
+    border: 2px solid rgba(0, 212, 255, 0.5);
+    backdrop-filter: blur(10px);
+}
+
+/* Plan Mode - Seek Planning: ⏩ +10 sn + 00:06:45 */
+#video-overlay.plan-mode {
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+    background: rgba(0, 0, 0, 0.85);
+    padding: clamp(15px, 2vh, 25px) clamp(25px, 4vw, 40px);
+    border-radius: 12px;
+    border: 2px solid rgba(0, 212, 255, 0.6);
+    backdrop-filter: blur(10px);
+}
+
+#video-overlay.plan-mode .plan-info {
+    color: #00d4ff;
+    font-size: clamp(1.8rem, 3.5vw, 3rem);
+    margin-bottom: 8px;
+}
+
+#video-overlay.plan-mode .plan-time {
+    color: #ffd700;
+    font-size: clamp(1.2rem, 2vw, 1.8rem);
+    font-weight: 600;
+}
+
+/* Loading Mode - Spinner + message */
+#video-overlay.loading-mode {
+    font-size: clamp(1.5rem, 2.5vw, 2.2rem);
+}
+
+#video-overlay.loading-mode .loading-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+#video-overlay.loading-mode .spinner {
+    width: clamp(50px, 8vw, 80px);
+    height: clamp(50px, 8vw, 80px);
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top: 4px solid #00d4ff;
+    border-right: 4px solid #00d4ff;
     border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-right: 15px;
-    vertical-align: middle;
+    animation: spin 0.8s linear infinite;
+}
+
+#video-overlay.loading-mode .loading-text {
+    color: #00d4ff;
 }
 
 @keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
+    to { transform: rotate(360deg); }
+}
+
+/* Error Mode - ❌ message */
+#video-overlay.error-mode {
+    color: #ff3333;
+    text-shadow: 0 0 20px rgba(255, 50, 50, 0.8), 0 2px 15px rgba(0, 0, 0, 0.9);
+    background: rgba(50, 0, 0, 0.7);
+    padding: clamp(15px, 2vh, 25px) clamp(25px, 4vw, 40px);
+    border-radius: 12px;
+    border: 2px solid rgba(255, 50, 50, 0.6);
+    backdrop-filter: blur(10px);
+}
+
+/* Live Mode - 🔴 CANLI */
+#video-overlay.live-mode {
+    color: #ff3333;
+    text-shadow: 0 0 20px rgba(255, 50, 50, 0.8), 0 2px 15px rgba(0, 0, 0, 0.9);
+}
+
+/* Play Mode - ▶ / ⏸ */
+#video-overlay.play-mode {
+    font-size: clamp(4rem, 8vw, 7rem);
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.9);
+}
+
+#video-overlay.play-mode .play-icon {
+    display: inline-block;
+    animation: playPop 0.3s ease-out;
+}
+
+@keyframes playPop {
+    0% { transform: scale(0.5); opacity: 0; }
+    60% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
 }
 
 /* Top Bar */
@@ -190,6 +287,12 @@ body {
     background: rgba(255, 255, 255, 0.2);
     border-radius: 2px;
     cursor: pointer;
+    position: relative;
+    transition: height 0.2s;
+}
+
+#progress-bar:hover {
+    height: clamp(6px, 0.8vh, 10px);
 }
 
 #progress-position {
@@ -197,11 +300,25 @@ body {
     background: #00d4ff;
     width: 0%;
     border-radius: 2px;
-    transition: width 0.1s;
+    transition: width 0.1s, background 0.2s;
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
 }
 
 #progress-bar:hover #progress-position {
     background: #00e5ff;
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.7);
+}
+
+/* Progress bar focus (seeking mode) */
+#progress-bar:focus {
+    outline: none;
+    height: clamp(8px, 1vh, 12px);
+    background: rgba(255, 255, 255, 0.3);
+}
+
+#progress-bar:focus #progress-position {
+    background: linear-gradient(90deg, #ffd700 0%, #ffed4e 100%);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
 }
 
 /* Alt Kat: Süreler ve Fullscreen */
@@ -421,6 +538,11 @@ body.idle #fullscreen-btn,
 body.idle #hints {
     opacity: 0;
     pointer-events: none;
+}
+
+/* Overlay IDLE'dan bağımsız - her zaman görünür kalabilir */
+body.idle #video-overlay.active {
+    opacity: 1 !important;
 }
 
 /* Responsive */
