@@ -306,7 +306,7 @@ body {
 
 #progress-bar {
     width: 100%;
-    height: clamp(6px, 0.8vh, 12px);
+    height: clamp(12px, 1.6vh, 24px);
     background: rgba(255, 255, 255, 0.2);
     border-radius: 2px;
     cursor: pointer;
@@ -333,12 +333,14 @@ body {
 }
 
 /* Progress bar focus (seeking mode) */
+#progress-bar:hover,
 #progress-bar:focus {
     outline: none;
-    height: clamp(12px, 1.5vh, 18px);
+    height: clamp(18px, 2.4vh, 36px);
     background: rgba(255, 255, 255, 0.3);
 }
 
+#progress-bar:hover #progress-position,
 #progress-bar:focus #progress-position {
     background: linear-gradient(90deg, #ffd700 0%, #ffed4e 100%);
     box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
