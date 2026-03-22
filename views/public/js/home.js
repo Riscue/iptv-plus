@@ -427,12 +427,20 @@ class HomePage {
 
     showCategoriesView() {
         var categoryName = this.currentCategory;
+        var input = document.getElementById('search-input');
+        var wasInSearch = document.activeElement === input;
+
         this.currentCategory = null;
         document.getElementById('categories-view').classList.remove('hidden');
         document.getElementById('channels-view').classList.add('hidden');
         document.getElementById('back-nav').classList.add('hidden');
 
-        // Focus the category we just came from
+        // Eğer aramadaydık, focus input'ta kalsın
+        if (wasInSearch) {
+            return;
+        }
+
+        // Focus the category we just came from (sadece aramadan çıkılmadıysa)
         setTimeout(function() {
             var categoryItems = Array.from(document.querySelectorAll('.category-item'));
             var targetCategory = categoryItems.find(function(el) {
@@ -555,11 +563,8 @@ class HomePage {
 
         this.renderChannels(filtered.slice(0, 100));
 
-        // Focus first result
-        setTimeout(function() {
-            var firstChannel = document.querySelector('.channel-item');
-            if (firstChannel) firstChannel.focus();
-        }, 50);
+        // NOT: Otomatik focus verme - kullanıcı aramaya devam edebilsin
+        // Focus input'ta kalsın, Enter veya ok tuşlarıyla sonuçlara geçilebilir
     }
 
     setupKeyboardEvents() {
@@ -590,6 +595,23 @@ class HomePage {
                 return;
             }
 
+            // Enter/OK - if in search input, move to first result
+            if ((e.key === 'Enter' || e.key === 'OK') && document.activeElement === input) {
+                e.preventDefault();
+                if (input.value.length >= 2) {
+                    // Arama sonuçları varsa ilk sonuca geç
+                    var firstChannel = document.querySelector('.channel-item');
+                    if (firstChannel) {
+                        firstChannel.focus();
+                        firstChannel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                } else {
+                    // Arama yoksa input'tan çık
+                    input.blur();
+                }
+                return;
+            }
+
             // Green button - resume recording
             if (e.keyCode === 404) {
                 e.preventDefault();
@@ -600,8 +622,8 @@ class HomePage {
                 return;
             }
 
-            // Letter keys focus search
-            if (document.activeElement.tagName !== 'INPUT' && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+            // Letter keys focus search (input'ta değilken harfe basınca search'a focus)
+            if (document.activeElement !== input && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
                 var code = e.key.charCodeAt(0);
                 if ((code >= 65 && code <= 90) || (code >= 97 && code <= 122)) {
                     input.focus();
@@ -611,7 +633,18 @@ class HomePage {
 
             // Arrow navigation
             if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-                if (document.activeElement === input) return;
+                // If in search input and pressing down, move to first result
+                if (document.activeElement === input) {
+                    if (e.key === 'ArrowDown' && input.value.length >= 2) {
+                        e.preventDefault();
+                        var firstChannel = document.querySelector('.channel-item');
+                        if (firstChannel) {
+                            firstChannel.focus();
+                            firstChannel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }
+                    return;
+                }
 
                 e.preventDefault();
                 var current = document.activeElement;
