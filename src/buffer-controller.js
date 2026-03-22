@@ -75,6 +75,7 @@ class BufferController {
 
         currentChannelName = channel.name;
         bufferStartTime = Date.now();
+        BufferController.updateActivity(); // Kapanma hatasını önlemek için activity timer resetlendi
 
         // Start cleanup interval
         BufferController.startCleanup();
@@ -164,6 +165,7 @@ class BufferController {
     }
 
     static async changeChannel(newChannel) {
+        BufferController.updateActivity(); // Kanal değiştirme isteği geldiğinde aktiviteyi güncelle
         console.log('[BUFFER] Changing channel:', currentChannelName, '->', newChannel.name);
 
         // Force recovery before stopping (clear any stuck processes)
@@ -222,6 +224,10 @@ class BufferController {
         activityInterval = setInterval(BufferController.checkActivity, 30000);
     }
 
+    static updateActivity() {
+        lastActivity = Date.now();
+    }
+
     static checkActivity() {
         if (!ffmpegProcess) return;
 
@@ -234,7 +240,7 @@ class BufferController {
     }
 
     static heartbeat(req, res) {
-        lastActivity = Date.now();
+        BufferController.updateActivity();
         res.json({
             isRecording: ffmpegProcess !== null,
             currentChannel: currentChannelName
