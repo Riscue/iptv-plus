@@ -894,6 +894,8 @@ class IPTVPlayer {
                         var plannedTime = Math.max(0, baseTime - self.seekAmount);
                         // Snap to nearest 10 seconds
                         plannedTime = Math.round(plannedTime / 10) * 10;
+                        // Ensure we don't go below 0 after rounding
+                        plannedTime = Math.max(0, plannedTime);
                         self.plannedSeekPosition = plannedTime;
                         var diff = Math.round(plannedTime - self.video.currentTime);
                         var targetTime = self.bufferStartTime ?
@@ -922,6 +924,8 @@ class IPTVPlayer {
                         var plannedTime = Math.min(self.video.duration || 0, baseTime + self.seekAmount);
                         // Snap to nearest 10 seconds
                         plannedTime = Math.round(plannedTime / 10) * 10;
+                        // Ensure we don't exceed duration after rounding
+                        plannedTime = Math.min(self.video.duration || 0, plannedTime);
                         self.plannedSeekPosition = plannedTime;
                         var diff = Math.round(plannedTime - self.video.currentTime);
                         var targetTime = self.bufferStartTime ?
