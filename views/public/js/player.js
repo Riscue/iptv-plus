@@ -1035,8 +1035,12 @@ class IPTVPlayer {
                     break;
             }
 
-            if (e.keyCode === 179 || e.key === 'MediaPlayPause' || e.key === 'Play' || e.key === 'Pause' ||
-                e.keyCode === 415 || e.keyCode === 19 || e.keyCode === 126 || e.keyCode === 127) { // TV Remote: Play(415), Pause(19), Android Play(126), Pause(127)
+            if (e.keyCode === 179 || e.keyCode === 415 || e.keyCode === 19 ||
+                e.keyCode === 126 || e.keyCode === 127 ||
+                e.keyCode === 71 || e.keyCode === 74 ||
+                e.keyCode === 10252 ||
+                e.key === 'MediaPlayPause' || e.key === 'MediaPlay' || e.key === 'MediaPause' ||
+                e.key === 'Play' || e.key === 'Pause') {
                 e.preventDefault();
                 self.togglePlay();
             }
@@ -1045,15 +1049,42 @@ class IPTVPlayer {
 
     setupMediaKeyEvents() {
         var self = this;
+
+        // LG WebOS: Medya tuşlarını uygulamaya devret
+        if (window.webOS && window.webOS.service) {
+            try {
+                // Luna service ile medya tuşlarını kaydet
+                webOS.service.request('luna://com.webos.service.ime', {
+                    method: 'registerRemoteKeyboard',
+                    parameters: {},
+                    onSuccess: function() { console.log('[PLAYER] WebOS media keys registered'); },
+                    onFailure: function() { console.log('[PLAYER] WebOS media key registration not available'); }
+                });
+            } catch(e) {}
+        }
+
+        // WebOS / Tizen native media events
         document.addEventListener('mediaplay', function() {
-            self.video.play();
-            self.updatePlayButtons();
+            if (self.video.paused) {
+                self.togglePlay();
+            }
         });
 
         document.addEventListener('mediapause', function() {
-            self.video.pause();
-            self.updatePlayButtons();
+            if (!self.video.paused) {
+                self.togglePlay();
+            }
         });
+
+        // MediaSession API for modern browsers
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.setActionHandler('play', function() {
+                if (self.video.paused) self.togglePlay();
+            });
+            navigator.mediaSession.setActionHandler('pause', function() {
+                if (!self.video.paused) self.togglePlay();
+            });
+        }
     }
 
     setupRemoteButtons() {
