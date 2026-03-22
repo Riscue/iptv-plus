@@ -8,7 +8,6 @@ class HomePage {
         this.favorites = this.loadFavorites();
         this.searchTimeout = null;
         this.watchHistory = this.loadWatchHistory();
-        this.longPressTimer = null;
         this.currentRecording = null; // Currently recording channel
 
         this.init();
@@ -186,11 +185,10 @@ class HomePage {
             if (channel) {
                 div.innerHTML = '<span class="dial-number">' + (i + 1) + '</span>' +
                                '<span class="channel-name">' + channel.name + '</span>';
-                div.tabIndex = 0; // Only filled items focusable
+                div.tabIndex = 0;
             } else {
                 div.className = 'favorite-item empty';
                 div.innerHTML = '<span class="dial-number">' + (i + 1) + '</span>';
-                // No tabindex for empty items
             }
 
             grid.appendChild(div);
@@ -204,34 +202,6 @@ class HomePage {
                 if (self.favorites[index]) {
                     self.playChannel(self.favorites[index]);
                 }
-            }
-        };
-
-        // Long press handler
-        grid.onmousedown = function(e) {
-            var item = e.target.closest('.favorite-item');
-            if (item && !item.classList.contains('empty')) {
-                self.longPressTimer = setTimeout(function() {
-                    var index = parseInt(item.dataset.index);
-                    self.favorites[index] = null;
-                    self.saveFavorites();
-                    self.renderFavorites();
-                    self.showNotification('Favoriden çıkarıldı');
-                }, 800);
-            }
-        };
-
-        grid.onmouseup = function() {
-            if (self.longPressTimer) {
-                clearTimeout(self.longPressTimer);
-                self.longPressTimer = null;
-            }
-        };
-
-        grid.onmouseleave = function() {
-            if (self.longPressTimer) {
-                clearTimeout(self.longPressTimer);
-                self.longPressTimer = null;
             }
         };
 
@@ -324,37 +294,6 @@ class HomePage {
                     self.playChannel(self.channels[index]);
                 }
             }
-        };
-
-        // Long press handler
-        grid.onmousedown = function(e) {
-            var item = e.target.closest('.recent-item');
-            if (item) {
-                item.classList.add('pressing');
-                self.longPressTimer = setTimeout(function() {
-                    var index = parseInt(item.dataset.index);
-                    self.addToFavorites(self.channels[index]);
-                    item.classList.remove('pressing');
-                    self.showNotification('Favorilere eklendi');
-                }, 800);
-            }
-        };
-
-        grid.onmouseup = function() {
-            if (self.longPressTimer) {
-                clearTimeout(self.longPressTimer);
-                self.longPressTimer = null;
-            }
-        };
-
-        grid.onmouseleave = function() {
-            if (self.longPressTimer) {
-                clearTimeout(self.longPressTimer);
-                self.longPressTimer = null;
-            }
-            grid.querySelectorAll('.recent-item').forEach(function(item) {
-                item.classList.remove('pressing');
-            });
         };
 
         // Keyboard handler
@@ -478,37 +417,6 @@ class HomePage {
             }
         };
 
-        // Long press handler
-        grid.onmousedown = function(e) {
-            var item = e.target.closest('.channel-item');
-            if (item) {
-                item.classList.add('pressing');
-                self.longPressTimer = setTimeout(function() {
-                    var index = parseInt(item.dataset.index);
-                    self.addToFavorites(self.channels[index]);
-                    item.classList.remove('pressing');
-                    self.showNotification('Favorilere eklendi');
-                }, 800);
-            }
-        };
-
-        grid.onmouseup = function() {
-            if (self.longPressTimer) {
-                clearTimeout(self.longPressTimer);
-                self.longPressTimer = null;
-            }
-        };
-
-        grid.onmouseleave = function() {
-            if (self.longPressTimer) {
-                clearTimeout(self.longPressTimer);
-                self.longPressTimer = null;
-            }
-            grid.querySelectorAll('.channel-item').forEach(function(item) {
-                item.classList.remove('pressing');
-            });
-        };
-
         // Keyboard handler
         grid.onkeydown = function(e) {
             if (e.key === 'Enter') {
@@ -618,6 +526,36 @@ class HomePage {
                 var recordingEl = document.querySelector('.recent-item.recording');
                 if (recordingEl) {
                     recordingEl.click();
+                }
+                return;
+            }
+
+            // Yellow button - Add to favorites (TV remote)
+            if (e.keyCode === 403 || e.keyCode === 405) {
+                e.preventDefault();
+                // Add currently focused channel to favorites
+                var active = document.activeElement;
+                var channel = null;
+
+                if (active.classList.contains('favorite-item') && !active.classList.contains('empty')) {
+                    // Favoriden çıkar
+                    var index = parseInt(active.dataset.index);
+                    self.favorites[index] = null;
+                    self.saveFavorites();
+                    self.renderFavorites();
+                    self.showNotification('Favoriden çıkarıldı');
+                } else if (active.classList.contains('recent-item') || active.classList.contains('channel-item') || active.classList.contains('category-item')) {
+                    // Favoriye ekle
+                    var index = parseInt(active.dataset.index);
+                    channel = self.channels[index];
+                    if (channel) {
+                        self.addToFavorites(channel);
+                    }
+                }
+
+                // Keep focus on current element
+                if (active) {
+                    active.focus();
                 }
                 return;
             }
