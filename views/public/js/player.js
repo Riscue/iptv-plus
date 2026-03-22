@@ -835,7 +835,8 @@ class IPTVPlayer {
                     break;
             }
 
-            if (e.keyCode === 179 || e.key === 'MediaPlayPause' || e.key === 'Play' || e.key === 'Pause') {
+            if (e.keyCode === 179 || e.key === 'MediaPlayPause' || e.key === 'Play' || e.key === 'Pause' ||
+                e.keyCode === 415 || e.keyCode === 19) { // TV Remote: Play(415), Pause(19)
                 e.preventDefault();
                 self.togglePlay();
             }
