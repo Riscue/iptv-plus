@@ -32,6 +32,11 @@ class HomePage {
             // Refresh buffer status when returning from player
             await self.loadBufferStatus();
             self.renderRecent();
+
+            if (e.persisted) {
+                // Page loaded from cache, refresh data but keep instance
+                self.loadData();
+            }
         });
     }
 
@@ -714,10 +719,4 @@ document.addEventListener('DOMContentLoaded', function() {
     window.homePage = new HomePage();
 });
 
-// Handle pageshow - just ensure page is responsive, don't re-create
-window.addEventListener('pageshow', function(e) {
-    if (e.persisted && window.homePage) {
-        // Page loaded from cache, refresh data but keep instance
-        window.homePage.loadData();
-    }
-});
+// Removed duplicate pageshow listener

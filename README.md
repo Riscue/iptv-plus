@@ -1,60 +1,75 @@
 # IPTV Plus
 
-TV kumandası ile kontrol edilebilen IPTV oynatıcı. DVR (geri sarma) özelliği ile kanalları canlı izlerken istediğiniz
-anı geri sarabilirsiniz.
+Gelişmiş bellek yönetimi (memory leak safe), kesintisiz DVR özelliği ve Akıllı TV (Smart TV) uyumluluğu ile donatılmış,
+TV kumandası veya klavye destekli modern IPTV oynatıcı.
 
-## Ozellikler
+Kanalları canlı izlerken istediğiniz an yayını dondurabilir, geriye sarabilir ve tekrar canlı yayına dönebilirsiniz.
 
-- 📺 **Canli IPTV yayini** - M3U8 playlist destegi
-- 📂 **Kategori bazli navigasyon** - M3U8 group-title ile otomatik kategori siniflandirma
-- 🌟 **Favori kanallar** - 1-9 tuslari ile hizli erisim, uzun basma ile ekleme/cikarma
-- 📊 **En cok izlenenler** - Izleme geccmisi takibi
-- 🔍 **Kanal arama** - Hizli kanal bulma
-- ⏪ **180 dakika DVR** - Izlediginiz kanali diske kaydeder, geri sarabilirsiniz
-- 🎮 **Kumanda destegi** - TV kumandasi tuslari ile kontrol
-- ⏯️ **Progress bar** - Ilerleme durumu, zaman gosterimi
-- 📡 **Canliya don** - Geri sarilmis yayinda canliya hizli donus
-- ⛶ **Fullscreen** - Tam ekran modu
+## 🚀 Öne Çıkan Özellikler
 
-## TV Kumandasi Tuslari
+- 📺 **Donanımsal ve Yazılımsal HLS Desteği** - Cihazın codec yeteneklerine göre Native veya HLS.js ile M3U8 oynatımı.
+- ⏪ **180 Dakika Kesintisiz DVR** - İzlediğiniz kanal anlık olarak diske indirilir (FFMPEG ile). 3 saate kadar geriye
+  sarabilirsiniz.
+- 🎮 **Akıllı TV D-Pad Navigasyonu** - Gelişmiş matris koordinat sistemi ile klavye veya TV kumandası ok tuşlarıyla tüm
+  ekranda pürüzsüz gezinti.
+- 🛡️ **VOD (Sinema/Dizi) Filtreleme** - Sadece Canlı TV kanallarını alır, .mp4/.mkv gibi VOD uzantılarını ve
+  kategorilerini otomatik filtreler.
+- 🔒 **Eşzamanlılık Koruması (Locking)** - Aynı anda bağlanan çoklu kullanıcılarda playlist doyasının çakışmasını önleyen
+  indirme kilidi (Download Promise Lock) mimarisi.
+- ⚡ **Otomatik Hayat Belirtisi (Heartbeat) & Tasarruf** - Kullanıcı uygulamadan çıktığında 5 dakika içinde sunucu FFMPEG
+  sürecini keserek bant genişliği ve donanım tasarrufu sağlar.
+- 🌟 **Favori Kanallar** - 1-9 numaralı tuşlar ile atama yapma, uzun basma (long-press) ile hızlı favori yönetimi.
+- 📊 **Akıllı İzleme Geçmişi** - En çok izlenen veya o an yayını devam eden (DVR statüsündeki) kanalları en üste taşır.
 
-| Tus          | Islev                                  |
-|--------------|----------------------------------------|
-| 1-9          | Favori kanal (Ana sayfada)             |
-| OK / Enter   | Oynat/Duraklat                         |
-| ↑ ↓          | Kanal degistir                         |
-| ← →          | 10 sn geri/ileri                       |
-| Exit / Back  | Kanal listesini kapat / Kategoriye don |
-| Harf tuslari | Arama kutusuna odaklan                 |
-| Menu         | Fullscreen                             |
+## 📺 TV Kumandası ve Klavye Kısayolları
 
-## Kurulum
+| Tuş / Kumanda    | İşlev                                           |
+|------------------|-------------------------------------------------|
+| **1-9**          | Favori kanallara hızlı geçiş (Ana Sayfada)      |
+| **OK / Enter**   | Oynat / Duraklat / Seç                          |
+| **↑ ↓ ← →**      | Menülerde gezinme / Oynatıcıda 10 sn ileri/geri |
+| **Kırmızı Tuş**  | Geri sarılmış yayından 'CANLI' konuma zıplama   |
+| **Sarı Tuş**     | Tam Ekran (Fullscreen)                          |
+| **Mavi Tuş**     | Player içindeyken yanda Kanal Listesini açma    |
+| **Exit / Back**  | Kanal listesini kapat / Kategoriye dön          |
+| **Harf Tuşları** | Arama kutusuna otomatik odaklanma               |
 
-### Yereli calistirma
+## 🛠️ Teknik Altyapı ve Mimarisi
+
+- **Backend:** `Node.js` + `Express`
+- **Görüntü İşleme:** `FFmpeg` (Buffer klasörüne anlık `.ts` parçalama)
+- **Frontend:** Vanilla JS, CSS3 Glassmorphism (TV Ekranlarına özel devasa font yapıları ve overlay öncelik sistemi)
+- **Güvenlik:** FFMPEG başlatma/sonlandırma işlemlerinde RegEx korumalı PID denetimleri, zombi process temizleyici.
+
+## ⚙️ Kurulum
+
+### Yerel Ortamda Çalıştırma (Native)
 
 ```bash
-# Baglililiklari yukle
+# Bağımlılıkları yükle
 npm install
 
-# .env dosyasi olustur
+# .env dosyası oluştur
 echo "PLAYLIST_URL=https://playlist-url.m3u8" > .env
 
-# Calistir
+# Sunucuyu başlat (FFmpeg bilgisayarınızda kurulu olmalıdır)
 npm start
 ```
 
-Tarayicida acin: `http://localhost:3000`
+Tarayıcıda açın: `http://localhost:3000`
 
-### Docker ile
+### Docker ile Çalıştırma (Önerilen)
+
+Docker imajı arka planda otomatik olarak FFmpeg kurduğu için işletim sistemi bağımsız sorunsuz çalışır.
 
 ```bash
-# .env dosyasi olustur
+# .env dosyası oluştur
 cat > .env << EOF
 PLAYLIST_URL=https://your-playlist-url.m3u8
 TZ=Europe/Istanbul
 EOF
 
-# Build et ve calistir
+# Build et ve çalıştır
 docker build -t iptv-plus .
 docker run -d \
   -p 3000:3000 \
@@ -64,52 +79,24 @@ docker run -d \
   iptv-plus
 ```
 
-### Docker Compose
+## 🎛️ Ortam Değişkenleri (Environment Variables)
 
-```bash
-# .env dosyasi olustur
-cat > .env << EOF
-PLAYLIST_URL=https://your-playlist-url.m3u8
-TZ=Europe/Istanbul
-EOF
+| Değişken       | Zorunlu mu? | Varsayılan       | Açıklama                                    |
+|----------------|-------------|------------------|---------------------------------------------|
+| `PLAYLIST_URL` | Evet        | -                | IP TV Sağlayıcınızın M3U8 linki             |
+| `BUFFER_DIR`   | Hayır       | /tmp/iptv-buffer | FFMPEG'in stream dosyalarını yazacağı dizin |
+| `PORT`         | Hayır       | 3000             | Sunucunun yayın yapacağı Port numarası      |
+| `TZ`           | Hayır       | Europe/Istanbul  | Uygulama içi Saat / Zaman Dilimi            |
 
-# Baslat
-docker-compose up -d
-```
+## 📝 Kullanım Senaryoları
 
-## Yapilandirma
+1. **İzleme:** Ana sayfadan kategori seçip herhangi bir kanalı başlatın.
+2. **Favoriye Alma:** Herhangi bir kanal kutusuna fareyle (veya kumandanın OK tuşuyla) 1 saniye basılı tutun.
+3. **DVR Kullanımı:** Oynatıcıdayken Kumandanın sağ/sol oklarıyla veya ekrandaki butonlarla zamanda geriye gidip
+   reklamsız bölümleri atlayın.
+4. **Tasarruf:** Sekmeyi kapattığınız an arkada biriken çöp dosyalar (orphan segments) ve FFMPEG kayıt işlemleri sistem
+   tarafından tespit edilip temizlenir.
 
-Environment variables:
+## 📜 Lisans
 
-| Degisken       | Zorunlu | Varsayilan       | Aciklama          |
-|----------------|---------|------------------|-------------------|
-| `PLAYLIST_URL` | Evet    | -                | M3U8 playlist URL |
-| `BUFFER_DIR`   | Hayir   | /tmp/iptv-buffer | Buffer klasoru    |
-| `PORT`         | Hayir   | 3000             | Sunucu portu      |
-| `TZ`           | Hayir   | Europe/Istanbul  | Timezone          |
-
-## Kullanim
-
-1. **Ana Sayfa**: Kategoriler arasindan secim yapin
-2. **Kanallar**: Kategori icerisinde kanal secin
-3. **Favorilere Ekle**: Kanala uzun basin (800ms)
-4. **Favoriden Cikar**: Favori kanala uzun basin
-5. **Favori Ac**: 1-9 tusuna basin (Ana sayfada)
-6. **Player**: DVR ile geri sarma, progress bar, canliya donus
-
-## Gereksinimler
-
-- Node.js 18+
-- FFmpeg (Docker ile otomatik)
-- M3U8 playlist URL (group-title destekli)
-
-## Notlar
-
-- DVR bufferi 180 dakikadir
-- Favoriler tarayicida saklanir (localStorage)
-- Izleme geccmisi 10 kanal tutulur
-- Her kategoriye ozel kanal listesi
-
-## Lisans
-
-MIT
+MIT License

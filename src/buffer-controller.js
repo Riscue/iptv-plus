@@ -6,6 +6,7 @@ const { bufferDir, bufferDurationMinutes, segmentDuration } = require('./constan
 let ffmpegProcess = null;
 let currentChannelName = null;
 let cleanupInterval = null;
+let activityInterval = null;
 let lastActivity = Date.now();
 let bufferStartTime = null;
 const ACTIVITY_TIMEOUT = 300000; // 5 minutes without activity = stop recording
@@ -123,6 +124,10 @@ class BufferController {
             clearInterval(cleanupInterval);
             cleanupInterval = null;
         }
+        if (activityInterval) {
+            clearInterval(activityInterval);
+            activityInterval = null;
+        }
 
         // Clean up buffer directory AFTER FFmpeg exits
         if (currentChannelName) {
@@ -150,7 +155,8 @@ class BufferController {
         // Kill any orphaned ffmpeg processes for our buffer
         const { spawn } = require('child_process');
         return new Promise((resolve) => {
-            spawn('pkill', ['-9', '-f', 'ffmpeg ' + bufferDir]).on('close', () => {
+            const safePattern = `ffmpeg.*${bufferDir.replace(/[^a-zA-Z0-9/_-]/g, '')}`;
+            spawn('pkill', ['-9', '-f', safePattern]).on('close', () => {
                 console.log('[BUFFER] Force recovery completed');
                 resolve();
             });
@@ -168,10 +174,6 @@ class BufferController {
 
         // Start new buffer
         return await BufferController.startBuffer(newChannel);
-    }
-
-    static async stop() {
-        await BufferController.stopBuffer();
     }
 
     static getStatus(req, res) {
@@ -207,6 +209,7 @@ class BufferController {
 
     static startCleanup() {
         // Run cleanup every 5 minutes
+        if (cleanupInterval) clearInterval(cleanupInterval);
         cleanupInterval = setInterval(() => {
             BufferController.cleanupOldSegments();
         }, 5 * 60 * 1000);
@@ -215,7 +218,8 @@ class BufferController {
         BufferController.cleanupOldSegments();
 
         // Start activity checker
-        setInterval(BufferController.checkActivity, 30000);
+        if (activityInterval) clearInterval(activityInterval);
+        activityInterval = setInterval(BufferController.checkActivity, 30000);
     }
 
     static checkActivity() {

@@ -1,7 +1,9 @@
 node_modules/
 tmp/
+
+package-lock.json
+.env*
 *.log
-.env
 .DS_Store
 *.m3u8
 *.ts

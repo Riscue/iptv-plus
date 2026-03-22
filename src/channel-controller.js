@@ -12,6 +12,9 @@ let currentChannel = null;
 let channelIndex = 0;
 let currentCategory = null;
 
+// Download lock
+let playlistDownloadPromise = null;
+
 class ChannelController {
 
     static async downloadPlaylist() {
@@ -27,31 +30,42 @@ class ChannelController {
             }
         }
 
+        if (playlistDownloadPromise) {
+            console.log('[PLAYLIST] Download already in progress, waiting...');
+            return playlistDownloadPromise;
+        }
+
         console.log('[PLAYLIST] Downloading from:', playlistUrl);
 
-        try {
-            const writer = fs.createWriteStream(playlistFile);
-            const response = await axios({
-                url: playlistUrl,
-                method: 'GET',
-                responseType: 'stream'
-            });
-            response.data.pipe(writer);
+        playlistDownloadPromise = (async () => {
+            try {
+                const writer = fs.createWriteStream(playlistFile);
+                const response = await axios({
+                    url: playlistUrl,
+                    method: 'GET',
+                    responseType: 'stream'
+                });
+                response.data.pipe(writer);
 
-            return new Promise((resolve, reject) => {
-                writer.on('finish', () => {
-                    console.log('[PLAYLIST] Downloaded and cached for 24h');
-                    resolve();
+                await new Promise((resolve, reject) => {
+                    writer.on('finish', () => {
+                        console.log('[PLAYLIST] Downloaded and cached for 24h');
+                        resolve();
+                    });
+                    writer.on('error', (err) => {
+                        console.error('[PLAYLIST] Download error:', err.message);
+                        reject(err);
+                    });
                 });
-                writer.on('error', (err) => {
-                    console.error('[PLAYLIST] Download error:', err.message);
-                    reject(err);
-                });
-            });
-        } catch (err) {
-            console.error('[PLAYLIST] Download failed:', err.message);
-            throw err;
-        }
+            } catch (err) {
+                console.error('[PLAYLIST] Download failed:', err.message);
+                throw err;
+            } finally {
+                playlistDownloadPromise = null;
+            }
+        })();
+
+        return playlistDownloadPromise;
     }
 
     static loadChannels() {
@@ -300,45 +314,6 @@ class ChannelController {
         }
     }
 
-    static channelUp() {
-        if (channelsCache.length === 0) return null;
-
-        // Get channels in current category
-        var catChannels = currentCategory
-            ? ChannelController.getChannelsByCategory(currentCategory)
-            : channelsCache;
-
-        if (catChannels.length === 0) catChannels = channelsCache;
-
-        var currentIndex = catChannels.findIndex(ch => ch.name === currentChannel?.name);
-        if (currentIndex === -1) currentIndex = 0;
-
-        var nextIndex = (currentIndex + 1) % catChannels.length;
-        var nextChannel = catChannels[nextIndex];
-
-        channelIndex = channelsCache.indexOf(nextChannel);
-        return nextChannel;
-    }
-
-    static channelDown() {
-        if (channelsCache.length === 0) return null;
-
-        // Get channels in current category
-        var catChannels = currentCategory
-            ? ChannelController.getChannelsByCategory(currentCategory)
-            : channelsCache;
-
-        if (catChannels.length === 0) catChannels = channelsCache;
-
-        var currentIndex = catChannels.findIndex(ch => ch.name === currentChannel?.name);
-        if (currentIndex === -1) currentIndex = 0;
-
-        var prevIndex = (currentIndex - 1 + catChannels.length) % catChannels.length;
-        var prevChannel = catChannels[prevIndex];
-
-        channelIndex = channelsCache.indexOf(prevChannel);
-        return prevChannel;
-    }
 
     static setCurrentChannel(channel) {
         currentChannel = channel;
