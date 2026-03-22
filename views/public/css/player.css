@@ -517,25 +517,10 @@ body {
     border-radius: 3px;
 }
 
-/* Hints */
-#hints {
-    position: absolute;
-    top: clamp(70px, 8vh, 100px);
-    right: clamp(20px, 3vw, 35px);
-    display: flex;
-    flex-direction: column;
-    gap: clamp(5px, 0.8vh, 10px);
-    font-size: clamp(0.7rem, 1vw, 1rem);
-    color: rgba(255, 255, 255, 0.4);
-    z-index: 15;
-    text-align: right;
-}
-
 /* Idle State */
 body.idle #top-bar,
 body.idle #bottom-bar,
-body.idle #fullscreen-btn,
-body.idle #hints {
+body.idle #fullscreen-btn {
     opacity: 0;
     pointer-events: none;
 }
@@ -557,10 +542,6 @@ body.idle #video-overlay.active {
     }
 
     .btn-label {
-        display: none;
-    }
-
-    #hints {
         display: none;
     }
 }
