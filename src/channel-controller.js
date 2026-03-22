@@ -4,6 +4,7 @@ const axios = require('axios');
 const M3U8FileParser = require('m3u8-file-parser');
 const { playlistUrl, playlistFile } = require('./constants');
 const BufferController = require('./buffer-controller');
+const logger = require('./logger');
 
 // Cache for channels
 let channelsCache = [];
@@ -25,17 +26,17 @@ class ChannelController {
 
             // Cache for 24 hours
             if (age < 24 * 60 * 60 * 1000) {
-                console.log('[PLAYLIST] Using cached playlist (' + ageHours + 'h old)');
+                logger.log('PLAYLIST', 'Using cached playlist (' + ageHours + 'h old)');
                 return;
             }
         }
 
         if (playlistDownloadPromise) {
-            console.log('[PLAYLIST] Download already in progress, waiting...');
+            logger.log('PLAYLIST', 'Download already in progress, waiting...');
             return playlistDownloadPromise;
         }
 
-        console.log('[PLAYLIST] Downloading from:', playlistUrl);
+        logger.log('PLAYLIST', 'Downloading from:', playlistUrl);
 
         playlistDownloadPromise = (async () => {
             try {
@@ -49,16 +50,16 @@ class ChannelController {
 
                 await new Promise((resolve, reject) => {
                     writer.on('finish', () => {
-                        console.log('[PLAYLIST] Downloaded and cached for 24h');
+                        logger.log('PLAYLIST', 'Downloaded and cached for 24h');
                         resolve();
                     });
                     writer.on('error', (err) => {
-                        console.error('[PLAYLIST] Download error:', err.message);
+                        logger.error('PLAYLIST', 'Download error:', err.message);
                         reject(err);
                     });
                 });
             } catch (err) {
-                console.error('[PLAYLIST] Download failed:', err.message);
+                logger.error('PLAYLIST', 'Download failed:', err.message);
                 throw err;
             } finally {
                 playlistDownloadPromise = null;
@@ -70,7 +71,7 @@ class ChannelController {
 
     static loadChannels() {
         if (!fs.existsSync(playlistFile)) {
-            console.log('[PLAYLIST] No playlist file found');
+            logger.log('PLAYLIST', 'No playlist file found');
             return [];
         }
 
@@ -143,11 +144,11 @@ class ChannelController {
                 .filter(cat => channelMap.get(cat).length > 0)
                 .sort();
 
-            console.log('[PLAYLIST] Loaded ' + channelsCache.length + ' channels in ' + categories.length + ' categories');
+            logger.log('PLAYLIST', 'Loaded ' + channelsCache.length + ' channels in ' + categories.length + ' categories');
 
             return channelsCache;
         } catch (err) {
-            console.error('[PLAYLIST] Parse error:', err.message);
+            logger.error('PLAYLIST', 'Parse error:', err.message);
             return [];
         }
     }
@@ -161,7 +162,7 @@ class ChannelController {
             await ChannelController.downloadPlaylist();
             const channels = ChannelController.loadChannels();
 
-            console.log('[PLAYLIST] Serving: ' + channels.length + ' channels, ' + categories.length + ' categories');
+            logger.log('PLAYLIST', 'Serving: ' + channels.length + ' channels, ' + categories.length + ' categories');
 
             res.json({
                 channels: channels,
@@ -171,7 +172,7 @@ class ChannelController {
                 currentCategory: currentCategory
             });
         } catch (err) {
-            console.error('[PLAYLIST] Error serving list:', err.message);
+            logger.error('PLAYLIST', 'Error serving list:', err.message);
             res.status(500).json({ error: err.message });
         }
     }
@@ -198,7 +199,7 @@ class ChannelController {
 
             res.json({ categories: categoryList });
         } catch (err) {
-            console.error('[PLAYLIST] Error serving categories:', err.message);
+            logger.error('PLAYLIST', 'Error serving categories:', err.message);
             res.status(500).json({ error: err.message });
         }
     }
@@ -219,10 +220,10 @@ class ChannelController {
                 .filter(ch => ch.name.toLowerCase().includes(query))
                 .slice(0, 20);
 
-            console.log('[PLAYLIST] Search "' + query + '" found: ' + results.length + ' results');
+            logger.log('PLAYLIST', 'Search "' + query + '" found: ' + results.length + ' results');
             res.json({ channels: results });
         } catch (err) {
-            console.error('[PLAYLIST] Search error:', err.message);
+            logger.error('PLAYLIST', 'Search error:', err.message);
             res.status(500).json({ error: err.message });
         }
     }
@@ -253,7 +254,7 @@ class ChannelController {
                 if (idx >= 0 && idx < channelsCache.length) {
                     targetChannel = channelsCache[idx];
                     channelIndex = idx;
-                    console.log('[CHANNEL] Changing to channel by index:', idx, '-', targetChannel.name);
+                    logger.log('CHANNEL', 'Changing to channel by index:', idx, '-', targetChannel.name);
                 }
             }
             // Change by name/url
@@ -269,7 +270,7 @@ class ChannelController {
 
                 if (targetChannel) {
                     channelIndex = channelsCache.indexOf(targetChannel);
-                    console.log('[CHANNEL] Changing to channel by name:', targetChannel.name);
+                    logger.log('CHANNEL', 'Changing to channel by name:', targetChannel.name);
                 }
             }
             // Change by category (first channel in category)
@@ -283,12 +284,12 @@ class ChannelController {
                 if (catChannels.length > 0) {
                     targetChannel = catChannels[0];
                     channelIndex = channelsCache.indexOf(targetChannel);
-                    console.log('[CHANNEL] Changing to category:', category, '- first channel:', targetChannel.name);
+                    logger.log('CHANNEL', 'Changing to category:', category, '- first channel:', targetChannel.name);
                 }
             }
 
             if (!targetChannel) {
-                console.log('[CHANNEL] Channel not found');
+                logger.log('CHANNEL', 'Channel not found');
                 return res.status(404).json({ error: 'Channel not found' });
             }
 
@@ -299,7 +300,7 @@ class ChannelController {
             await BufferController.changeChannel(targetChannel);
             currentChannel = targetChannel;
 
-            console.log('[CHANNEL] Changed to: ' + currentChannel.name + ' (' + currentChannel.category + ')');
+            logger.log('CHANNEL', 'Changed to: ' + currentChannel.name + ' (' + currentChannel.category + ')');
 
             res.json({
                 current: currentChannel,
@@ -309,7 +310,7 @@ class ChannelController {
             });
 
         } catch (err) {
-            console.error('[CHANNEL] Change error:', err.message);
+            logger.error('CHANNEL', 'Change error:', err.message);
             res.status(500).json({ error: err.message });
         }
     }

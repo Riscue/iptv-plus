@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const { bufferDir, bufferDurationMinutes, segmentDuration } = require('./constants');
+const logger = require('./logger');
 
 let ffmpegProcess = null;
 let currentChannelName = null;
@@ -44,14 +45,14 @@ class BufferController {
             m3u8Path
         ];
 
-        console.log('[BUFFER] Starting FFmpeg for channel:', channel.name);
-        console.log('[BUFFER] URL:', channel.url);
-        console.log('[BUFFER] Output:', m3u8Path);
+        logger.log('BUFFER', 'Starting FFmpeg for channel:', channel.name);
+        logger.log('BUFFER', 'URL:', channel.url);
+        logger.log('BUFFER', 'Output:', m3u8Path);
 
         ffmpegProcess = spawn('ffmpeg', ffmpegArgs);
 
         ffmpegProcess.on('error', (err) => {
-            console.error('[BUFFER] FFmpeg spawn error:', err.message);
+            logger.error('BUFFER', 'FFmpeg spawn error:', err.message);
         });
 
         // Log FFmpeg errors only
@@ -59,17 +60,17 @@ class BufferController {
             const msg = data.toString();
             // Only log error lines
             if (msg.toLowerCase().includes('error')) {
-                console.error('[FFmpeg]', msg.trim());
+                logger.error('FFmpeg', msg.trim());
             }
         });
 
         ffmpegProcess.on('exit', (code, signal) => {
             if (signal === 'SIGTERM' || signal === 'SIGINT') {
-                console.log('[BUFFER] FFmpeg stopped by user');
+                logger.log('BUFFER', 'FFmpeg stopped by user');
             } else if (code === 0) {
-                console.log('[BUFFER] FFmpeg exited normally');
+                logger.log('BUFFER', 'FFmpeg exited normally');
             } else {
-                console.log('[BUFFER] FFmpeg exited - code:', code, 'signal:', signal);
+                logger.log('BUFFER', 'FFmpeg exited - code:', code, 'signal:', signal);
             }
         });
 
@@ -80,13 +81,13 @@ class BufferController {
         // Start cleanup interval
         BufferController.startCleanup();
 
-        console.log('[BUFFER] Recording started for:', channel.name);
+        logger.log('BUFFER', 'Recording started for:', channel.name);
         return m3u8Path;
     }
 
     static async stopBuffer() {
         if (ffmpegProcess) {
-            console.log('[BUFFER] Stopping recording:', currentChannelName);
+            logger.log('BUFFER', 'Stopping recording:', currentChannelName);
 
             // Wait for FFmpeg to exit before cleanup
             await new Promise((resolve) => {
@@ -106,7 +107,7 @@ class BufferController {
                 // Force kill after 2 seconds if still running
                 setTimeout(() => {
                     if (!resolved && ffmpegProcess) {
-                        console.log('[BUFFER] Force killing FFmpeg after timeout');
+                        logger.log('BUFFER', 'Force killing FFmpeg after timeout');
                         ffmpegProcess.kill('SIGKILL');
                         // Give it 500ms then resolve anyway
                         setTimeout(() => {
@@ -133,18 +134,18 @@ class BufferController {
         // Clean up buffer directory AFTER FFmpeg exits
         if (currentChannelName) {
             const channelPath = BufferController.getChannelBufferPath(currentChannelName);
-            console.log('[BUFFER] Cleaning up buffer directory:', channelPath);
+            logger.log('BUFFER', 'Cleaning up buffer directory:', channelPath);
             BufferController.cleanupChannel(channelPath);
         }
 
         currentChannelName = null;
         bufferStartTime = null;
-        console.log('[BUFFER] Recording stopped');
+        logger.log('BUFFER', 'Recording stopped');
     }
 
     // Force recovery - kill any stuck FFmpeg processes
     static async forceRecover() {
-        console.log('[BUFFER] Force recovery initiated');
+        logger.log('BUFFER', 'Force recovery initiated');
 
         if (ffmpegProcess) {
             try {
@@ -158,7 +159,7 @@ class BufferController {
         return new Promise((resolve) => {
             const safePattern = `ffmpeg.*${bufferDir.replace(/[^a-zA-Z0-9/_-]/g, '')}`;
             spawn('pkill', ['-9', '-f', safePattern]).on('close', () => {
-                console.log('[BUFFER] Force recovery completed');
+                logger.log('BUFFER', 'Force recovery completed');
                 resolve();
             });
         });
@@ -166,7 +167,7 @@ class BufferController {
 
     static async changeChannel(newChannel) {
         BufferController.updateActivity(); // Kanal değiştirme isteği geldiğinde aktiviteyi güncelle
-        console.log('[BUFFER] Changing channel:', currentChannelName, '->', newChannel.name);
+        logger.log('BUFFER', 'Changing channel:', currentChannelName, '->', newChannel.name);
 
         // Force recovery before stopping (clear any stuck processes)
         await BufferController.forceRecover();
@@ -234,7 +235,7 @@ class BufferController {
         const inactiveTime = Date.now() - lastActivity;
         if (inactiveTime > ACTIVITY_TIMEOUT) {
             const inactiveMinutes = Math.floor(inactiveTime / 60000);
-            console.log('[BUFFER] No activity for ' + inactiveMinutes + ' minutes, stopping recording');
+            logger.log('BUFFER', 'No activity for ' + inactiveMinutes + ' minutes, stopping recording');
             BufferController.stopBuffer();
         }
     }
@@ -248,7 +249,7 @@ class BufferController {
     }
 
     static async stop(req, res) {
-        console.log('[BUFFER] Stop requested via API');
+        logger.log('BUFFER', 'Stop requested via API');
         await BufferController.stopBuffer();
         res.json({ success: true });
     }
@@ -264,11 +265,11 @@ class BufferController {
                             fs.rmSync(channelPath, { recursive: true, force: true });
                         }
                     });
-                    console.log('[BUFFER] Cleaned up ' + channels.length + ' old buffer(s)');
+                    logger.log('BUFFER', 'Cleaned up ' + channels.length + ' old buffer(s)');
                 }
             }
         } catch (err) {
-            console.error('[BUFFER] Cleanup error:', err.message);
+            logger.error('BUFFER', 'Cleanup error:', err.message);
         }
     }
 
@@ -294,10 +295,10 @@ class BufferController {
                     } catch (e) {}
                 });
 
-                console.log('[BUFFER] Cleaned up ' + toRemove.length + ' old segments (' + tsFiles.length + ' total)');
+                logger.log('BUFFER', 'Cleaned up ' + toRemove.length + ' old segments (' + tsFiles.length + ' total)');
             }
         } catch (err) {
-            console.error('[BUFFER] Segment cleanup error:', err.message);
+            logger.error('BUFFER', 'Segment cleanup error:', err.message);
         }
     }
 
@@ -307,14 +308,14 @@ class BufferController {
                 fs.rmSync(channelPath, { recursive: true, force: true });
             }
         } catch (err) {
-            console.error('[BUFFER] Channel cleanup error:', err.message);
+            logger.error('BUFFER', 'Channel cleanup error:', err.message);
         }
     }
 
     static cleanupOrphaned() {
         spawn('pkill', ['-9', 'ffmpeg']).on('exit', (code) => {
             if (code === 0) {
-                console.log('[BUFFER] Killed orphaned FFmpeg processes');
+                logger.log('BUFFER', 'Killed orphaned FFmpeg processes');
             }
         }).on('error', () => {
             // No ffmpeg running, silently ignore

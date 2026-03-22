@@ -6,12 +6,13 @@ const fs = require('fs');
 const ChannelController = require('./channel-controller');
 const BufferController = require('./buffer-controller');
 const { bufferDir } = require('./constants');
+const logger = require('./logger');
 
 // Initialize directories
 fs.mkdirSync(bufferDir, { recursive: true });
 
 // Clean up orphaned FFmpeg processes and old buffer files from previous sessions
-console.log('[SERVER] Cleaning up orphaned processes and old buffers...');
+logger.log('SERVER', 'Cleaning up orphaned processes and old buffers...');
 BufferController.cleanupOrphaned();
 BufferController.cleanupAllBuffers();
 
@@ -70,22 +71,20 @@ app.get('/favicon.ico', (req, res) => {
 
 // Shutdown handler
 process.on('SIGTERM', () => {
-    console.log('[SERVER] SIGTERM received, shutting down...');
+    logger.log('SERVER', 'SIGTERM received, shutting down...');
     BufferController.stopBuffer();
     process.exit(0);
 });
 
 process.on('SIGINT', () => {
-    console.log('[SERVER] SIGINT received, shutting down...');
+    logger.log('SERVER', 'SIGINT received, shutting down...');
     BufferController.stopBuffer();
     process.exit(0);
 });
 
 // Start server
 app.listen(3000, () => {
-    console.log('=================================');
-    console.log('[SERVER] IPTV Player Started');
-    console.log('[SERVER] URL: http://localhost:3000');
-    console.log('[SERVER] Buffer: ' + bufferDir);
-    console.log('=================================');
+    logger.log('SERVER', 'IPTV Player Started');
+    logger.log('SERVER', 'URL: http://localhost:3000');
+    logger.log('SERVER', 'Buffer: ' + bufferDir);
 });
