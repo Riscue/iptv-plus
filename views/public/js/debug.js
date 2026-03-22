@@ -1,5 +1,3 @@
-// ==================== DEBUG PANEL ====================
-// Shared debug panel functionality for all pages
 (function() {
     'use strict';
 

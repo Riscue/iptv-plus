@@ -1,5 +1,3 @@
-// IPTV Player - Home Page
-
 class HomePage {
     constructor() {
         this.categories = [];

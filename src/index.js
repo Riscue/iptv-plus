@@ -84,7 +84,7 @@ process.on('SIGINT', () => {
 
 // Start server
 app.listen(3000, () => {
-    logger.log('SERVER', 'IPTV Player Started');
+    logger.log('SERVER', 'IPTV Plus Started');
     logger.log('SERVER', 'URL: http://localhost:3000');
     logger.log('SERVER', 'Buffer: ' + bufferDir);
 });

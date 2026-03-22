@@ -1,5 +1,3 @@
-// IPTV Player - Video Player Page
-
 class IPTVPlayer {
     constructor() {
         this.hls = null;
