@@ -26,7 +26,6 @@ Thumbs.db
 *.swo
 
 # Git
-.git/
 
 # Build artifacts (will be generated during Docker build)
 build-info.json
