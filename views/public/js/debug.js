@@ -130,6 +130,34 @@
             renderLogs();
         }
 
+        function addErrorLog(type, message, details) {
+            var logMessage = '[' + type + '] ' + message;
+            if (details) {
+                logMessage += '\n' + details;
+            }
+            addLog('error', [logMessage]);
+        }
+
+        window.onerror = function (message, source, lineno, colno, error) {
+            var details = 'Source: ' + (source || 'unknown') + '\nLine: ' + (lineno || '?') + ', Column: ' + (colno || '?');
+            if (error && error.stack) {
+                details += '\nStack: ' + error.stack.split('\n').slice(0, 3).join('\n');
+            }
+            addErrorLog('UNCAUGHT ERROR', String(message), details);
+            return false;
+        };
+
+        window.onunhandledrejection = function (event) {
+            var details = 'Promise: ' + (event.promise || 'unknown');
+            if (event.reason) {
+                details += '\nReason: ' + String(event.reason);
+                if (event.reason.stack) {
+                    details += '\nStack: ' + event.reason.stack.split('\n').slice(0, 3).join('\n');
+                }
+            }
+            addErrorLog('UNHANDLED PROMISE', String(event.reason), details);
+        };
+
         function renderLogs() {
             if (!debugLogs) return;
             debugLogs.innerHTML = logs.map(function (log) {
