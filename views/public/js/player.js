@@ -152,7 +152,7 @@ class IPTVPlayer {
 
         var focusableSelector = 'button, [tabindex]:not(.channel-item)';
         document.addEventListener('focus', function (e) {
-            if (e.target.matches(focusableSelector)) {
+            if (e.target && e.target.matches && e.target.matches(focusableSelector)) {
                 document.body.classList.remove('idle');
             }
         }, true);
