@@ -79,7 +79,7 @@ TZ=Europe/Istanbul
 EOF
 
 # Build et ve çalıştır
-docker build -t iptv-plus .
+docker build -f docker/Dockerfile -t iptv-plus .
 docker run -d \
   -p 3000:3000 \
   --env-file .env \
