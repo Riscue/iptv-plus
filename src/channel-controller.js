@@ -2,18 +2,16 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const M3U8FileParser = require('m3u8-file-parser');
-const { playlistUrl, playlistFile } = require('./constants');
+const {playlistUrl, playlistFile} = require('./constants');
 const BufferController = require('./buffer-controller');
 const logger = require('./logger');
 
-// Cache for channels
 let channelsCache = [];
 let categories = [];
 let currentChannel = null;
 let channelIndex = 0;
 let currentCategory = null;
 
-// Download lock
 let playlistDownloadPromise = null;
 
 class ChannelController {
@@ -24,7 +22,6 @@ class ChannelController {
             const age = Date.now() - stats.mtimeMs;
             const ageHours = Math.floor(age / (60 * 60 * 1000));
 
-            // Cache for 24 hours
             if (age < 24 * 60 * 60 * 1000) {
                 logger.log('PLAYLIST', 'Using cached playlist (' + ageHours + 'h old)');
                 return;
@@ -42,9 +39,7 @@ class ChannelController {
             try {
                 const writer = fs.createWriteStream(playlistFile);
                 const response = await axios({
-                    url: playlistUrl,
-                    method: 'GET',
-                    responseType: 'stream'
+                    url: playlistUrl, method: 'GET', responseType: 'stream'
                 });
                 response.data.pipe(writer);
 
@@ -81,25 +76,20 @@ class ChannelController {
             parser.read(content);
             const result = parser.getResult();
 
-            // Parse channels with categories
-            const channelMap = new Map(); // category -> channels
+            const channelMap = new Map();
 
-            // VOD/Movie file extensions to exclude
             const vodExtensions = ['.mkv', '.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v'];
-            // VOD/Movie category keywords to exclude
             const vodCategoryKeywords = ['film', 'movie', 'vod', 'sinema', 'cinema'];
 
             (result.segments || []).forEach(s => {
                 if (s.inf && s.inf.title && s.url) {
-                    // Skip VOD/Movie files - only allow live streams
                     const urlLower = s.url.toLowerCase();
                     const isVodFile = vodExtensions.some(ext => urlLower.endsWith(ext));
 
                     if (isVodFile) {
-                        return; // Skip this entry
+                        return;
                     }
 
-                    // Try to get group title from various locations
                     let groupTitle = 'Genel';
                     if (s.inf.groupTitle) {
                         groupTitle = s.inf.groupTitle;
@@ -109,18 +99,15 @@ class ChannelController {
                         groupTitle = s.inf.attributes.group;
                     }
 
-                    // Skip VOD/Movie categories
                     const categoryLower = groupTitle.toLowerCase();
                     const isVodCategory = vodCategoryKeywords.some(keyword => categoryLower.includes(keyword));
 
                     if (isVodCategory) {
-                        return; // Skip this entry
+                        return;
                     }
 
                     const channel = {
-                        name: s.inf.title,
-                        url: s.url,
-                        category: groupTitle
+                        name: s.inf.title, url: s.url, category: groupTitle
                     };
 
                     if (!channelMap.has(groupTitle)) {
@@ -130,16 +117,13 @@ class ChannelController {
                 }
             });
 
-            // Convert to arrays and sort - only include categories with channels
             channelsCache = [];
-
             channelMap.forEach((chans, cat) => {
                 if (chans.length > 0) {
                     channelsCache.push(...chans);
                 }
             });
 
-            // Only include non-empty categories
             categories = Array.from(channelMap.keys())
                 .filter(cat => channelMap.get(cat).length > 0)
                 .sort();
@@ -173,7 +157,7 @@ class ChannelController {
             });
         } catch (err) {
             logger.error('PLAYLIST', 'Error serving list:', err.message);
-            res.status(500).json({ error: err.message });
+            res.status(500).json({error: err.message});
         }
     }
 
@@ -193,14 +177,13 @@ class ChannelController {
             });
 
             const categoryList = Array.from(categoryMap.entries()).map(([name, count]) => ({
-                name: name,
-                count: count
+                name: name, count: count
             }));
 
-            res.json({ categories: categoryList });
+            res.json({categories: categoryList});
         } catch (err) {
             logger.error('PLAYLIST', 'Error serving categories:', err.message);
-            res.status(500).json({ error: err.message });
+            res.status(500).json({error: err.message});
         }
     }
 
@@ -208,7 +191,7 @@ class ChannelController {
         try {
             const query = req.query.q?.trim().toLowerCase();
             if (!query || query.length < 2) {
-                return res.json({ channels: [] });
+                return res.json({channels: []});
             }
 
             if (channelsCache.length === 0) {
@@ -221,31 +204,27 @@ class ChannelController {
                 .slice(0, 20);
 
             logger.log('PLAYLIST', 'Search "' + query + '" found: ' + results.length + ' results');
-            res.json({ channels: results });
+            res.json({channels: results});
         } catch (err) {
             logger.error('PLAYLIST', 'Search error:', err.message);
-            res.status(500).json({ error: err.message });
+            res.status(500).json({error: err.message});
         }
     }
 
     static getCurrentChannel(req, res) {
         res.json({
-            current: currentChannel,
-            index: channelIndex,
-            currentCategory: currentCategory
+            current: currentChannel, index: channelIndex, currentCategory: currentCategory
         });
     }
 
     static async changeChannel(req, res) {
         try {
-            const { index, name, url, category } = req.query;
+            const {index, name, url, category} = req.query;
             let targetChannel;
 
-            // Change by index (global)
             if (index !== undefined) {
                 const idx = parseInt(index);
 
-                // Load channels if cache is empty
                 if (channelsCache.length === 0) {
                     await ChannelController.downloadPlaylist();
                     ChannelController.loadChannels();
@@ -256,25 +235,19 @@ class ChannelController {
                     channelIndex = idx;
                     logger.log('CHANNEL', 'Changing to channel by index:', idx, '-', targetChannel.name);
                 }
-            }
-            // Change by name/url
-            else if (name || url) {
+            } else if (name || url) {
                 if (channelsCache.length === 0) {
                     await ChannelController.downloadPlaylist();
                     ChannelController.loadChannels();
                 }
 
-                targetChannel = channelsCache.find(ch =>
-                    name ? ch.name === name : ch.url === url
-                );
+                targetChannel = channelsCache.find(ch => name ? ch.name === name : ch.url === url);
 
                 if (targetChannel) {
                     channelIndex = channelsCache.indexOf(targetChannel);
                     logger.log('CHANNEL', 'Changing to channel by name:', targetChannel.name);
                 }
-            }
-            // Change by category (first channel in category)
-            else if (category) {
+            } else if (category) {
                 if (channelsCache.length === 0) {
                     await ChannelController.downloadPlaylist();
                     ChannelController.loadChannels();
@@ -290,13 +263,11 @@ class ChannelController {
 
             if (!targetChannel) {
                 logger.log('CHANNEL', 'Channel not found');
-                return res.status(404).json({ error: 'Channel not found' });
+                return res.status(404).json({error: 'Channel not found'});
             }
 
-            // Set current category
             currentCategory = targetChannel.category;
 
-            // Stop current buffer and start new one
             await BufferController.changeChannel(targetChannel);
             currentChannel = targetChannel;
 
@@ -311,7 +282,7 @@ class ChannelController {
 
         } catch (err) {
             logger.error('CHANNEL', 'Change error:', err.message);
-            res.status(500).json({ error: err.message });
+            res.status(500).json({error: err.message});
         }
     }
 

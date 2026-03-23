@@ -25,7 +25,6 @@ body {
     padding: 20px;
 }
 
-/* Header */
 #header {
     text-align: center;
     margin-bottom: 30px;
@@ -68,7 +67,6 @@ body {
     font-size: 1.5rem;
 }
 
-/* Sections */
 #categories-view, #channels-view {
     padding: 20px 0;
 }
@@ -77,7 +75,6 @@ body {
     display: none !important;
 }
 
-/* Back Navigation */
 #back-nav {
     display: flex;
     align-items: center;
@@ -116,7 +113,6 @@ section h2 {
     padding-bottom: 10px;
 }
 
-/* Favorites Grid - 9 Dial Style */
 #favorites-grid {
     display: grid;
     grid-template-columns: repeat(9, 1fr);
@@ -203,7 +199,6 @@ section h2 {
     opacity: 0.5;
 }
 
-/* Recently/Most Watched */
 #recent-grid {
     display: grid;
     grid-template-columns: repeat(9, 1fr);
@@ -279,11 +274,14 @@ section h2 {
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
 }
 
-/* Categories Grid */
 #categories-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -329,7 +327,6 @@ section h2 {
     color: rgba(255, 255, 255, 0.6);
 }
 
-/* Channels Grid - More compact */
 #channels-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -379,7 +376,6 @@ section h2 {
     hyphens: auto;
 }
 
-/* Modal */
 #modal {
     position: fixed;
     top: 0;
@@ -472,7 +468,6 @@ section h2 {
     outline: none;
 }
 
-/* Help */
 #help {
     position: fixed;
     bottom: 20px;
@@ -493,7 +488,6 @@ section h2 {
     gap: 5px;
 }
 
-/* Responsive */
 @media (max-width: 1200px) {
     #favorites-grid {
         grid-template-columns: repeat(6, 1fr);

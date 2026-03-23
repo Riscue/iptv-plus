@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,107 +8,124 @@
     <link rel="stylesheet" href="/public/css/debug.css">
 </head>
 <body>
-    <div id="app">
-        <!-- Video Container -->
-        <div id="video-container">
-            <video id="video" autoplay></video>
-            <div id="video-overlay"></div>
+<div id="app">
+    <div id="video-container">
+        <video id="video" autoplay></video>
+        <div id="video-overlay"></div>
+    </div>
+
+    <div id="top-bar">
+        <button id="btn-back" class="top-btn" tabindex="0">
+            <svg class="svg-icon" viewBox="0 0 24 24">
+                <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/>
+            </svg>
+            Back
+        </button>
+        <div class="channel-info">
+            <span id="channel-name">Select Channel</span>
+            <span id="channel-number"></span>
+        </div>
+        <button id="btn-channels" class="top-btn blue-btn" tabindex="0">
+            <svg class="svg-icon" viewBox="0 0 24 24">
+                <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
+            </svg>
+            Channels
+        </button>
+    </div>
+
+    <div id="channel-list" class="hidden">
+        <div class="list-header">
+            <span>Channels</span>
+            <button id="btn-close-list" class="close-btn">
+                <svg class="svg-icon" viewBox="0 0 24 24">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                </svg>
+            </button>
+        </div>
+        <div class="list-search">
+            <input id="search-input" type="text" placeholder="Search..." autocomplete="off">
+        </div>
+        <div id="channel-items"></div>
+    </div>
+
+    <div id="bottom-bar">
+        <div class="controls-row">
+            <button id="btn-ch-prev" class="control-btn">
+                <span class="btn-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></span>
+                <span class="btn-label">Prev</span>
+            </button>
+            <button id="btn-rwnd" class="control-btn">
+                <span class="btn-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path
+                        d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg></span>
+                <span class="btn-label">Rewind</span>
+            </button>
+            <button id="btn-play-pause" class="control-btn main-btn">
+                <span class="btn-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
+            </button>
+            <button id="btn-fwd" class="control-btn">
+                <span class="btn-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path
+                        d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg></span>
+                <span class="btn-label">Forward</span>
+            </button>
+            <button id="btn-ch-next" class="control-btn">
+                <span class="btn-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path
+                        d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></span>
+                <span class="btn-label">Next</span>
+            </button>
         </div>
 
-        <!-- Top Bar -->
-        <div id="top-bar">
-            <button id="btn-back" class="top-btn" tabindex="0"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg> Geri</button>
-            <div class="channel-info">
-                <span id="channel-name">Kanal Seçin</span>
-                <span id="channel-number"></span>
-            </div>
-            <button id="btn-channels" class="top-btn blue-btn" tabindex="0"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg> Kanallar</button>
-        </div>
-
-        <!-- Channel List Overlay -->
-        <div id="channel-list" class="hidden">
-            <div class="list-header">
-                <span>Kanallar</span>
-                <button id="btn-close-list" class="close-btn"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
-            </div>
-            <div class="list-search">
-                <input id="search-input" type="text" placeholder="Ara..." autocomplete="off">
-            </div>
-            <div id="channel-items"></div>
-        </div>
-
-        <!-- Bottom Bar -->
-        <div id="bottom-bar">
-            <!-- Controls -->
-            <div class="controls-row">
-                <button id="btn-ch-prev" class="control-btn">
-                    <span class="btn-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></span>
-                    <span class="btn-label">Önceki</span>
-                </button>
-                <button id="btn-rwnd" class="control-btn">
-                    <span class="btn-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg></span>
-                    <span class="btn-label">Geri</span>
-                </button>
-                <button id="btn-play-pause" class="control-btn main-btn">
-                    <span class="btn-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
-                </button>
-                <button id="btn-fwd" class="control-btn">
-                    <span class="btn-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg></span>
-                    <span class="btn-label">İleri</span>
-                </button>
-                <button id="btn-ch-next" class="control-btn">
-                    <span class="btn-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></span>
-                    <span class="btn-label">Sonraki</span>
-                </button>
-            </div>
-
-            <!-- Progress -->
-            <div id="progress-container">
-                <!-- Orta Kat: Progress Bar -->
-                <div class="progress-middle">
-                    <div id="progress-bar" class="progress-bar" tabindex="0">
-                        <div id="progress-position"></div>
-                    </div>
+        <div id="progress-container">
+            <div class="progress-middle">
+                <div id="progress-bar" class="progress-bar" tabindex="0">
+                    <div id="progress-position"></div>
                 </div>
+            </div>
 
-                <!-- Alt Kat: Süreler ve Fullscreen -->
-                <div class="progress-bottom">
-                    <div id="time-display">
-                        <span id="current-time">00:00:00</span>
-                        <span id="total-time">--:--:--</span>
-                    </div>
-                    <div>
-                        <button id="btn-live" class="live-btn hidden red-btn" tabindex="0"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg> CANLI</button>
-                        <button id="btn-fullscreen" class="fullscreen-btn yellow-btn" tabindex="0"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg></button>
-                    </div>
+            <div class="progress-bottom">
+                <div id="time-display">
+                    <span id="current-time">00:00:00</span>
+                    <span id="total-time">--:--:--</span>
+                </div>
+                <div>
+                    <button id="btn-live" class="live-btn hidden red-btn" tabindex="0">
+                        <svg class="svg-icon" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="8"/>
+                        </svg>
+                        LIVE
+                    </button>
+                    <button id="btn-fullscreen" class="fullscreen-btn yellow-btn" tabindex="0">
+                        <svg class="svg-icon" viewBox="0 0 24 24">
+                            <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Debug Panel (Ctrl/Cmd + Shift + D or Info long press) -->
-    <div id="debug-panel" class="debug-panel hidden">
-        <div class="debug-header">
-            <span>Debug Panel</span>
-            <button id="debug-close" class="debug-close">×</button>
+<div id="debug-panel" class="debug-panel hidden">
+    <div class="debug-header">
+        <span>Debug Panel</span>
+        <button id="debug-close" class="debug-close">×</button>
+    </div>
+    <div class="debug-content">
+        <div class="debug-section">
+            <h3>Keyboard Events (Last 20)</h3>
+            <div id="debug-key-events" class="debug-events"></div>
         </div>
-        <div class="debug-content">
-            <div class="debug-section">
-                <h3>Keyboard Events (Son 20)</h3>
-                <div id="debug-key-events" class="debug-events"></div>
-            </div>
-            <div class="debug-section">
-                <h3>Console Logs (Son 50)</h3>
-                <div id="debug-logs" class="debug-logs"></div>
-            </div>
-        </div>
-        <div class="debug-footer">
-            <span id="debug-build-info"></span>
+        <div class="debug-section">
+            <h3>Console Logs (Last 50)</h3>
+            <div id="debug-logs" class="debug-logs"></div>
         </div>
     </div>
+    <div class="debug-footer">
+        <span id="debug-build-info"></span>
+    </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="/public/js/player.js"></script>
-    <script src="/public/js/debug.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script src="/public/js/player.js"></script>
+<script src="/public/js/debug.js"></script>
 </body>
 </html>

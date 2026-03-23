@@ -11,7 +11,6 @@ body {
     overflow: hidden;
     width: 100vw;
     height: 100vh;
-    /* TV-friendly base font size using viewport */
     font-size: clamp(16px, 1.2vw, 24px);
 }
 
@@ -29,7 +28,6 @@ body {
     position: relative;
 }
 
-/* Video */
 #video-container {
     width: 100%;
     height: 100%;
@@ -42,9 +40,7 @@ body {
     object-fit: contain;
 }
 
-/* ==================== INDICATOR SYSTEM ==================== */
 
-/* Base Overlay */
 #video-overlay {
     position: absolute;
     top: 50%;
@@ -64,12 +60,10 @@ body {
     justify-content: center;
 }
 
-/* Active state (visible) */
 #video-overlay.active {
     opacity: 1 !important;
 }
 
-/* Combined selectors for all modes */
 #video-overlay.active.seek-mode,
 #video-overlay.active.plan-mode,
 #video-overlay.active.loading-mode,
@@ -79,7 +73,6 @@ body {
     opacity: 1 !important;
 }
 
-/* Seek Mode - Quick Seek: ⏪ -10 sn */
 #video-overlay.seek-mode {
     color: #00d4ff;
     text-shadow: 0 0 20px rgba(0, 212, 255, 0.8), 0 2px 15px rgba(0, 0, 0, 0.9);
@@ -92,7 +85,6 @@ body {
     gap: 15px;
 }
 
-/* Plan Mode - Seek Planning: ⏩ +10 sn + 00:06:45 */
 #video-overlay.plan-mode {
     font-size: clamp(1.5rem, 3vw, 2.5rem);
     background: rgba(0, 0, 0, 0.85);
@@ -114,7 +106,6 @@ body {
     font-weight: 600;
 }
 
-/* Loading Mode - Spinner + message */
 #video-overlay.loading-mode {
     font-size: clamp(1.5rem, 2.5vw, 2.2rem);
 }
@@ -141,10 +132,11 @@ body {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
-/* Error Mode - ❌ message */
 #video-overlay.error-mode {
     color: #ff3333;
     text-shadow: 0 0 20px rgba(255, 50, 50, 0.8), 0 2px 15px rgba(0, 0, 0, 0.9);
@@ -157,7 +149,6 @@ body {
     gap: 15px;
 }
 
-/* Live Mode - 🔴 CANLI */
 #video-overlay.live-mode {
     color: #ff3333;
     text-shadow: 0 0 20px rgba(255, 50, 50, 0.8), 0 2px 15px rgba(0, 0, 0, 0.9);
@@ -165,7 +156,6 @@ body {
     gap: 15px;
 }
 
-/* Play Mode - ▶ / ⏸ */
 #video-overlay.play-mode {
     font-size: clamp(4rem, 8vw, 7rem);
     color: rgba(255, 255, 255, 0.9);
@@ -178,12 +168,20 @@ body {
 }
 
 @keyframes playPop {
-    0% { transform: scale(0.5); opacity: 0; }
-    60% { transform: scale(1.2); opacity: 1; }
-    100% { transform: scale(1); opacity: 1; }
+    0% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+    60% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
-/* Top Bar */
 #top-bar {
     position: absolute;
     top: 0;
@@ -243,7 +241,6 @@ body {
     gap: 8px;
 }
 
-/* Bottom Bar */
 #bottom-bar {
     position: absolute;
     bottom: 0;
@@ -256,7 +253,6 @@ body {
     background: linear-gradient(to top, rgba(0, 0, 0, 0.98) 0%, rgba(0, 0, 0, 0.85) 50%, rgba(0, 0, 0, 0.5) 80%, transparent 100%);
 }
 
-/* Controls */
 #controls {
     display: contents;
 }
@@ -269,7 +265,6 @@ body {
     padding: clamp(20px, 2.5vh, 30px) clamp(25px, 3.5vw, 40px);
 }
 
-/* Progress Section - 3 Katlı */
 #progress-container {
     padding: clamp(10px, 1.5vh, 15px) clamp(20px, 3vw, 35px) clamp(20px, 2.5vh, 30px);
 }
@@ -294,7 +289,6 @@ body {
     display: none;
 }
 
-/* Orta Kat: Progress Bar */
 .progress-middle {
     margin-bottom: clamp(24px, 3vh, 36px);
     height: clamp(12px, 1.5vh, 18px);
@@ -330,7 +324,6 @@ body {
     box-shadow: 0 0 15px rgba(0, 212, 255, 0.7);
 }
 
-/* Progress bar focus (seeking mode) */
 #progress-bar:hover,
 #progress-bar:focus {
     outline: none;
@@ -344,7 +337,6 @@ body {
     box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
 }
 
-/* Alt Kat: Süreler ve Fullscreen */
 .progress-bottom {
     height: clamp(32px, 4vh, 45px);
     display: flex;
@@ -373,7 +365,6 @@ body {
     color: rgba(255, 255, 255, 0.7);
 }
 
-/* Fullscreen Button */
 .fullscreen-btn {
     padding: clamp(10px, 1.5vh, 16px) clamp(18px, 2.5vw, 26px);
     border: none;
@@ -427,7 +418,6 @@ body {
     opacity: 0.8;
 }
 
-/* Active state for play/pause */
 .control-btn.active {
     background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
     border-color: #00d4ff;
@@ -438,7 +428,6 @@ body {
     opacity: 0.4;
 }
 
-/* Channel List */
 #channel-list {
     position: fixed;
     top: 0;
@@ -541,7 +530,6 @@ body {
     border-radius: 3px;
 }
 
-/* Idle State */
 body.idle #top-bar,
 body.idle #bottom-bar,
 body.idle #fullscreen-btn {
@@ -549,12 +537,10 @@ body.idle #fullscreen-btn {
     pointer-events: none;
 }
 
-/* Overlay IDLE'dan bağımsız - her zaman görünür kalabilir */
 body.idle #video-overlay.active {
     opacity: 1 !important;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
     #channel-list {
         width: 100%;
@@ -570,7 +556,6 @@ body.idle #video-overlay.active {
     }
 }
 
-/* Focus */
 .top-btn:focus,
 .fullscreen-btn:focus,
 .live-btn:focus,
@@ -584,7 +569,6 @@ body.idle #video-overlay.active {
     outline-offset: clamp(3px, 0.6vw, 6px);
 }
 
-/* Color Buttons */
 .red-btn {
     background: rgba(255, 50, 50, 0.3) !important;
     border: 1px solid rgba(255, 50, 50, 0.6) !important;

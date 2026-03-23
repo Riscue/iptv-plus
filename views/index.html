@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,69 +8,73 @@
     <link rel="stylesheet" href="/public/css/debug.css">
 </head>
 <body>
-    <div id="app">
-        <!-- Header with Search -->
-        <header id="header">
-            <h1><svg class="svg-icon" viewBox="0 0 24 24"><path d="M21 3H3C1.89 3 1 3.89 1 5v12c0 1.1.89 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.11-.9-2-2-2zm0 14H3V5h18v12z"/></svg> IPTV Plus</h1>
-            <div id="search-box">
-                <input id="search-input" type="text" placeholder="Kanal ara..." autocomplete="off">
-                <span id="search-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></span>
-            </div>
-        </header>
-
-        <!-- Favorites (Quick Dial 1-9) -->
-        <section id="favorites">
-            <h2>Favoriler</h2>
-            <div id="favorites-grid"></div>
-        </section>
-
-        <!-- Recently/Most Watched -->
-        <section id="recent">
-            <h2>Son İzlenenler</h2>
-            <div id="recent-grid"></div>
-        </section>
-
-        <!-- Back Navigation -->
-        <div id="back-nav" class="hidden">
-            <button id="btn-back" class="top-btn"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg> Geri</button>
-            <span id="current-category-name"></span>
+<div id="app">
+    <header id="header">
+        <h1>
+            <svg class="svg-icon" viewBox="0 0 24 24">
+                <path d="M21 3H3C1.89 3 1 3.89 1 5v12c0 1.1.89 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.11-.9-2-2-2zm0 14H3V5h18v12z"/>
+            </svg>
+            IPTV Plus
+        </h1>
+        <div id="search-box">
+            <input id="search-input" type="text" placeholder="Search channels..." autocomplete="off">
+            <span id="search-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path
+                    d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></span>
         </div>
+    </header>
 
-        <!-- Categories Grid -->
-        <section id="categories-view">
-            <h2>Kategoriler</h2>
-            <div id="categories-grid"></div>
-        </section>
+    <section id="favorites">
+        <h2>Favorites</h2>
+        <div id="favorites-grid"></div>
+    </section>
 
-        <!-- Channels Grid -->
-        <main id="channels-view" class="hidden">
-            <h2 id="channels-title">Kanallar</h2>
-            <div id="channels-grid"></div>
-        </main>
+    <section id="recent">
+        <h2>Recently Watched</h2>
+        <div id="recent-grid"></div>
+    </section>
+
+    <div id="back-nav" class="hidden">
+        <button id="btn-back" class="top-btn">
+            <svg class="svg-icon" viewBox="0 0 24 24">
+                <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/>
+            </svg>
+            Back
+        </button>
+        <span id="current-category-name"></span>
     </div>
 
-    <!-- Debug Panel (Ctrl/Cmd + Shift + D or Info long press) -->
-    <div id="debug-panel" class="debug-panel hidden">
-        <div class="debug-header">
-            <span>Debug Panel</span>
-            <button id="debug-close" class="debug-close">×</button>
+    <section id="categories-view">
+        <h2>Categories</h2>
+        <div id="categories-grid"></div>
+    </section>
+
+    <main id="channels-view" class="hidden">
+        <h2 id="channels-title">Channels</h2>
+        <div id="channels-grid"></div>
+    </main>
+</div>
+
+<div id="debug-panel" class="debug-panel hidden">
+    <div class="debug-header">
+        <span>Debug Panel</span>
+        <button id="debug-close" class="debug-close">×</button>
+    </div>
+    <div class="debug-content">
+        <div class="debug-section">
+            <h3>Keyboard Events (Last 20)</h3>
+            <div id="debug-key-events" class="debug-events"></div>
         </div>
-        <div class="debug-content">
-            <div class="debug-section">
-                <h3>Keyboard Events (Son 20)</h3>
-                <div id="debug-key-events" class="debug-events"></div>
-            </div>
-            <div class="debug-section">
-                <h3>Console Logs (Son 50)</h3>
-                <div id="debug-logs" class="debug-logs"></div>
-            </div>
-        </div>
-        <div class="debug-footer">
-            <span id="debug-build-info"></span>
+        <div class="debug-section">
+            <h3>Console Logs (Last 50)</h3>
+            <div id="debug-logs" class="debug-logs"></div>
         </div>
     </div>
+    <div class="debug-footer">
+        <span id="debug-build-info"></span>
+    </div>
+</div>
 
-    <script src="/public/js/home.js"></script>
-    <script src="/public/js/debug.js"></script>
+<script src="/public/js/home.js"></script>
+<script src="/public/js/debug.js"></script>
 </body>
 </html>

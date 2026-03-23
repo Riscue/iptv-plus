@@ -6,7 +6,7 @@ class HomePage {
         this.favorites = this.loadFavorites();
         this.searchTimeout = null;
         this.watchHistory = this.loadWatchHistory();
-        this.currentRecording = null; // Currently recording channel
+        this.currentRecording = null;
 
         this.init();
     }
@@ -25,18 +25,15 @@ class HomePage {
 
     setupPageShowHandler() {
         var self = this;
-        window.addEventListener('pageshow', async function(e) {
-            // Refresh buffer status when returning from player
+        window.addEventListener('pageshow', async function (e) {
             await self.loadBufferStatus();
             self.renderRecent();
 
             if (e.persisted) {
-                // Page loaded from cache, refresh data but keep instance
                 self.loadData();
             }
-            
-            // Eğer aktif element temizlendiyse (DOM değiştiği için), klavyenin çalışması için bir elemente tekrar odaklan
-            setTimeout(function() {
+
+            setTimeout(function () {
                 var active = document.activeElement;
                 if (!active || active === document.body || !document.body.contains(active)) {
                     var firstItem = document.querySelector('.favorite-item:not(.empty), .recent-item, .category-item');
@@ -69,7 +66,9 @@ class HomePage {
             var res = await fetch('/api/buffer/status');
             var data = await res.json();
             if (data.isRecording && data.currentChannel) {
-                this.currentRecording = this.channels.find(function(ch) { return ch.name === data.currentChannel; });
+                this.currentRecording = this.channels.find(function (ch) {
+                    return ch.name === data.currentChannel;
+                });
             } else {
                 this.currentRecording = null;
             }
@@ -100,7 +99,8 @@ class HomePage {
             if (stored) {
                 return JSON.parse(stored);
             }
-        } catch (e) {}
+        } catch (e) {
+        }
         return {};
     }
 
@@ -110,23 +110,22 @@ class HomePage {
 
     addToWatchHistory(channel) {
         if (!this.watchHistory[channel.name]) {
-            this.watchHistory[channel.name] = { count: 0, lastWatched: Date.now() };
+            this.watchHistory[channel.name] = {count: 0, lastWatched: Date.now()};
         }
         this.watchHistory[channel.name].count++;
         this.watchHistory[channel.name].lastWatched = Date.now();
-        
-        // Sadece son 9 kanalı tut (lastWatched'a göre sıralayıp fazlalıkları sil)
+
         var keys = Object.keys(this.watchHistory);
         if (keys.length > 9) {
             var self = this;
-            var sortedKeys = keys.sort(function(a, b) {
+            var sortedKeys = keys.sort(function (a, b) {
                 return self.watchHistory[b].lastWatched - self.watchHistory[a].lastWatched;
             });
             for (var i = 9; i < sortedKeys.length; i++) {
                 delete this.watchHistory[sortedKeys[i]];
             }
         }
-        
+
         this.saveWatchHistory();
         this.renderRecent();
     }
@@ -134,17 +133,17 @@ class HomePage {
     addToFavorites(channel) {
         var emptyIndex = this.favorites.indexOf(null);
         if (emptyIndex === -1) {
-            var existingIndex = this.favorites.findIndex(function(f) {
+            var existingIndex = this.favorites.findIndex(function (f) {
                 return f && f.name === channel.name;
             });
             if (existingIndex !== -1) {
                 this.favorites[existingIndex] = null;
-                this.showNotification('Favoriden çıkarıldı');
+                this.showNotification('Removed from favorites');
                 this.saveFavorites();
                 this.renderFavorites();
                 return;
             } else {
-                this.showNotification('Favori slotları dolu!');
+                this.showNotification('Favorite slots full!');
                 return;
             }
         }
@@ -152,7 +151,7 @@ class HomePage {
         this.favorites[emptyIndex] = channel;
         this.saveFavorites();
         this.renderFavorites();
-        this.showNotification('Favorilere eklendi');
+        this.showNotification('Added to favorites');
     }
 
     showNotification(message) {
@@ -162,7 +161,7 @@ class HomePage {
         notification.style.cssText = 'position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(0, 212, 255, 0.9); color: #fff; padding: 12px 24px; border-radius: 8px; z-index: 10000; font-weight: 500;';
         document.body.appendChild(notification);
 
-        setTimeout(function() {
+        setTimeout(function () {
             notification.remove();
         }, 2000);
     }
@@ -181,8 +180,7 @@ class HomePage {
             div.dataset.index = i;
 
             if (channel) {
-                div.innerHTML = '<span class="dial-number">' + (i + 1) + '</span>' +
-                               '<span class="channel-name">' + channel.name + '</span>';
+                div.innerHTML = '<span class="dial-number">' + (i + 1) + '</span>' + '<span class="channel-name">' + channel.name + '</span>';
                 div.tabIndex = 0;
             } else {
                 div.className = 'favorite-item empty';
@@ -192,8 +190,7 @@ class HomePage {
             grid.appendChild(div);
         }
 
-        // Click handler
-        grid.onclick = function(e) {
+        grid.onclick = function (e) {
             var item = e.target.closest('.favorite-item');
             if (item && !item.classList.contains('empty')) {
                 var index = parseInt(item.dataset.index);
@@ -203,8 +200,7 @@ class HomePage {
             }
         };
 
-        // Keyboard handler
-        grid.onkeydown = function(e) {
+        grid.onkeydown = function (e) {
             if (e.key === 'Enter') {
                 var item = e.target.closest('.favorite-item');
                 if (item && !item.classList.contains('empty')) {
@@ -224,8 +220,10 @@ class HomePage {
         var self = this;
 
         var sortedChannels = Object.keys(this.watchHistory)
-            .map(function(name) {
-                var channel = self.channels.find(function(ch) { return ch.name === name; });
+            .map(function (name) {
+                var channel = self.channels.find(function (ch) {
+                    return ch.name === name;
+                });
                 if (!channel) return null;
                 return {
                     name: name,
@@ -234,52 +232,44 @@ class HomePage {
                     channel: channel
                 };
             })
-            .filter(function(item) { return item !== null; })
-            .sort(function(a, b) {
+            .filter(function (item) {
+                return item !== null;
+            })
+            .sort(function (a, b) {
                 return b.lastWatched - a.lastWatched;
             })
             .slice(0, 9);
 
-        // Add currently recording channel at the top if not already in list
         if (this.currentRecording) {
-            var existingIndex = sortedChannels.findIndex(function(item) { return item.name === self.currentRecording.name; });
+            var existingIndex = sortedChannels.findIndex(function (item) {
+                return item.name === self.currentRecording.name;
+            });
             var recordingItem;
             if (existingIndex !== -1) {
-                // Remove from current position
                 recordingItem = sortedChannels.splice(existingIndex, 1)[0];
             } else {
-                // Create new item
                 recordingItem = {
-                    name: this.currentRecording.name,
-                    count: 0,
-                    lastWatched: Date.now(),
-                    channel: this.currentRecording
+                    name: this.currentRecording.name, count: 0, lastWatched: Date.now(), channel: this.currentRecording
                 };
             }
-            // Add at the beginning
             sortedChannels.unshift(recordingItem);
-            // Keep only 9 items
             sortedChannels = sortedChannels.slice(0, 9);
         }
 
         if (sortedChannels.length === 0) {
-            grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; padding: 20px;">Henüz kanal izlenmedi</div>';
+            grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; padding: 20px;">No channels watched yet</div>';
             return;
         }
 
-        grid.innerHTML = sortedChannels.map(function(item) {
+        grid.innerHTML = sortedChannels.map(function (item) {
             var globalIndex = self.channels.indexOf(item.channel);
             var isRecording = self.currentRecording && item.name === self.currentRecording.name;
-            var timeStr = new Date(item.lastWatched).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-            var recordingBadge = isRecording ? '<div class="recording-badge"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg> Devam ediyor</div>' : '<div class="watch-count">' + 'Saat: ' + timeStr + '</div>';
-            return '<div class="recent-item' + (isRecording ? ' recording' : '') + '" data-index="' + globalIndex + '" data-recording="' + isRecording + '" tabindex="0">' +
-                   '<div class="channel-name">' + item.name + '</div>' +
-                   recordingBadge +
-                   '</div>';
+            var timeStr = new Date(item.lastWatched).toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'});
+            var recordingBadge = isRecording ? '<div class="recording-badge"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg> Recording</div>' : '<div class="watch-count">' + 'Time: ' + timeStr + '</div>';
+            return '<div class="recent-item' + (isRecording ? ' recording' : '') + '" data-index="' + globalIndex + '" data-recording="' + isRecording + '" tabindex="0">' + '<div class="channel-name">' + item.name + '</div>' + recordingBadge + '</div>';
         }).join('');
 
-        // Click handler
-        grid.onclick = function(e) {
+        grid.onclick = function (e) {
             var item = e.target.closest('.recent-item');
             if (item) {
                 var index = parseInt(item.dataset.index);
@@ -292,8 +282,7 @@ class HomePage {
             }
         };
 
-        // Keyboard handler
-        grid.onkeydown = function(e) {
+        grid.onkeydown = function (e) {
             if (e.key === 'Enter') {
                 var item = e.target.closest('.recent-item');
                 if (item) {
@@ -315,14 +304,11 @@ class HomePage {
 
         var self = this;
 
-        grid.innerHTML = this.categories.map(function(cat) {
-            return '<div class="category-item" data-category="' + cat.name + '" tabindex="0">' +
-                   '<div class="category-name">' + cat.name + '</div>' +
-                   '<div class="category-count">' + cat.count + ' kanal</div>' +
-                   '</div>';
+        grid.innerHTML = this.categories.map(function (cat) {
+            return '<div class="category-item" data-category="' + cat.name + '" tabindex="0">' + '<div class="category-name">' + cat.name + '</div>' + '<div class="category-count">' + cat.count + ' channels</div>' + '</div>';
         }).join('');
 
-        grid.onclick = function(e) {
+        grid.onclick = function (e) {
             var item = e.target.closest('.category-item');
             if (item) {
                 var category = item.dataset.category;
@@ -330,7 +316,7 @@ class HomePage {
             }
         };
 
-        grid.onkeydown = function(e) {
+        grid.onkeydown = function (e) {
             if (e.key === 'Enter') {
                 var item = e.target.closest('.category-item');
                 if (item) {
@@ -343,18 +329,19 @@ class HomePage {
 
     showCategory(categoryName) {
         this.currentCategory = categoryName;
-        var catChannels = this.channels.filter(function(ch) { return ch.category === categoryName; });
+        var catChannels = this.channels.filter(function (ch) {
+            return ch.category === categoryName;
+        });
 
         document.getElementById('categories-view').classList.add('hidden');
         document.getElementById('channels-view').classList.remove('hidden');
         document.getElementById('back-nav').classList.remove('hidden');
         document.getElementById('current-category-name').textContent = categoryName;
-        document.getElementById('channels-title').textContent = categoryName + ' - Kanallar';
+        document.getElementById('channels-title').textContent = categoryName + ' - Channels';
 
         this.renderChannels(catChannels);
 
-        // Focus first channel
-        setTimeout(function() {
+        setTimeout(function () {
             var firstChannel = document.querySelector('.channel-item');
             if (firstChannel) firstChannel.focus();
         }, 50);
@@ -370,20 +357,18 @@ class HomePage {
         document.getElementById('channels-view').classList.add('hidden');
         document.getElementById('back-nav').classList.add('hidden');
 
-        // Eğer aramadaydık, focus input'ta kalsın
         if (wasInSearch) {
             return;
         }
 
-        // Focus the category we just came from (sadece aramadan çıkılmadıysa)
-        setTimeout(function() {
+        setTimeout(function () {
             var categoryItems = Array.from(document.querySelectorAll('.category-item'));
-            var targetCategory = categoryItems.find(function(el) {
+            var targetCategory = categoryItems.find(function (el) {
                 return el.dataset.category === categoryName;
             });
             if (targetCategory) {
                 targetCategory.focus();
-                targetCategory.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                targetCategory.scrollIntoView({behavior: 'smooth', block: 'center'});
             } else if (categoryItems.length > 0) {
                 categoryItems[0].focus();
             }
@@ -397,15 +382,12 @@ class HomePage {
         var channels = channelsList || this.channels;
         var self = this;
 
-        grid.innerHTML = channels.map(function(ch) {
+        grid.innerHTML = channels.map(function (ch) {
             var globalIndex = self.channels.indexOf(ch);
-            return '<div class="channel-item" data-index="' + globalIndex + '" tabindex="0">' +
-                   '<div class="channel-name">' + ch.name + '</div>' +
-                   '</div>';
+            return '<div class="channel-item" data-index="' + globalIndex + '" tabindex="0">' + '<div class="channel-name">' + ch.name + '</div>' + '</div>';
         }).join('');
 
-        // Click handler
-        grid.onclick = function(e) {
+        grid.onclick = function (e) {
             var item = e.target.closest('.channel-item');
             if (item) {
                 var index = parseInt(item.dataset.index);
@@ -413,8 +395,7 @@ class HomePage {
             }
         };
 
-        // Keyboard handler
-        grid.onkeydown = function(e) {
+        grid.onkeydown = function (e) {
             if (e.key === 'Enter') {
                 var item = e.target.closest('.channel-item');
                 if (item) {
@@ -429,7 +410,7 @@ class HomePage {
         var self = this;
         var btnBack = document.getElementById('btn-back');
         if (btnBack) {
-            btnBack.addEventListener('click', function() {
+            btnBack.addEventListener('click', function () {
                 self.showCategoriesView();
             });
         }
@@ -440,9 +421,9 @@ class HomePage {
         var input = document.getElementById('search-input');
         if (!input) return;
 
-        input.addEventListener('input', function() {
+        input.addEventListener('input', function () {
             clearTimeout(self.searchTimeout);
-            self.searchTimeout = setTimeout(function() {
+            self.searchTimeout = setTimeout(function () {
                 self.performSearch(input.value);
             }, 300);
         });
@@ -455,28 +436,24 @@ class HomePage {
         }
 
         var self = this;
-        var filtered = this.channels.filter(function(ch) {
+        var filtered = this.channels.filter(function (ch) {
             return ch.name.toLowerCase().indexOf(query.toLowerCase()) !== -1;
         });
 
         document.getElementById('categories-view').classList.add('hidden');
         document.getElementById('channels-view').classList.remove('hidden');
         document.getElementById('back-nav').classList.remove('hidden');
-        document.getElementById('current-category-name').textContent = 'Arama: ' + query;
-        document.getElementById('channels-title').textContent = 'Arama Sonuçları';
+        document.getElementById('current-category-name').textContent = 'Search: ' + query;
+        document.getElementById('channels-title').textContent = 'Search Results';
 
         this.renderChannels(filtered.slice(0, 100));
-
-        // NOT: Otomatik focus verme - kullanıcı aramaya devam edebilsin
-        // Focus input'ta kalsın, Enter veya ok tuşlarıyla sonuçlara geçilebilir
     }
 
     setupKeyboardEvents() {
         var self = this;
         var input = document.getElementById('search-input');
 
-        document.addEventListener('keydown', function(e) {
-            // Number keys 1-9
+        document.addEventListener('keydown', function (e) {
             if (e.key >= '1' && e.key <= '9') {
                 var idx = parseInt(e.key) - 1;
                 if (self.favorites[idx]) {
@@ -488,7 +465,6 @@ class HomePage {
                 return;
             }
 
-            // Escape/Back
             if (e.key === 'Escape' || e.key === 'Exit' || e.keyCode === 1001 || e.keyCode === 1009 || e.keyCode === 461) {
                 if (self.currentCategory) {
                     self.showCategoriesView();
@@ -499,24 +475,20 @@ class HomePage {
                 return;
             }
 
-            // Enter/OK - if in search input, move to first result
             if ((e.key === 'Enter' || e.key === 'OK') && document.activeElement === input) {
                 e.preventDefault();
                 if (input.value.length >= 2) {
-                    // Arama sonuçları varsa ilk sonuca geç
                     var firstChannel = document.querySelector('.channel-item');
                     if (firstChannel) {
                         firstChannel.focus();
-                        firstChannel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        firstChannel.scrollIntoView({behavior: 'smooth', block: 'center'});
                     }
                 } else {
-                    // Arama yoksa input'tan çık
                     input.blur();
                 }
                 return;
             }
 
-            // Green button - resume recording
             if (e.keyCode === 404) {
                 e.preventDefault();
                 var recordingEl = document.querySelector('.recent-item.recording');
@@ -526,22 +498,18 @@ class HomePage {
                 return;
             }
 
-            // Yellow button - Add to favorites (TV remote)
             if (e.keyCode === 403 || e.keyCode === 405) {
                 e.preventDefault();
-                // Add currently focused channel to favorites
                 var active = document.activeElement;
                 var channel = null;
 
                 if (active.classList.contains('favorite-item') && !active.classList.contains('empty')) {
-                    // Favoriden çıkar
                     var index = parseInt(active.dataset.index);
                     self.favorites[index] = null;
                     self.saveFavorites();
                     self.renderFavorites();
-                    self.showNotification('Favoriden çıkarıldı');
+                    self.showNotification('Removed from favorites');
                 } else if (active.classList.contains('recent-item') || active.classList.contains('channel-item') || active.classList.contains('category-item')) {
-                    // Favoriye ekle
                     var index = parseInt(active.dataset.index);
                     channel = self.channels[index];
                     if (channel) {
@@ -549,14 +517,12 @@ class HomePage {
                     }
                 }
 
-                // Keep focus on current element
                 if (active) {
                     active.focus();
                 }
                 return;
             }
 
-            // Letter keys focus search (input'ta değilken harfe basınca search'a focus)
             if (document.activeElement !== input && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
                 var code = e.key.charCodeAt(0);
                 if ((code >= 65 && code <= 90) || (code >= 97 && code <= 122)) {
@@ -565,25 +531,21 @@ class HomePage {
                 }
             }
 
-            // Arrow navigation
             if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-                // If in search input
                 if (document.activeElement === input) {
                     if (e.key === 'ArrowDown') {
                         e.preventDefault();
                         if (input.value.length >= 2) {
-                            // Arama sonuçları varsa ilk sonuca geç
                             var firstChannel = document.querySelector('.channel-item');
                             if (firstChannel) {
                                 firstChannel.focus();
-                                firstChannel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                firstChannel.scrollIntoView({behavior: 'smooth', block: 'center'});
                             }
                         } else {
-                            // Arama yoksa favorilere geç
                             var firstFavorite = document.querySelector('.favorite-item:not(.empty)');
                             if (firstFavorite) {
                                 firstFavorite.focus();
-                                firstFavorite.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                firstFavorite.scrollIntoView({behavior: 'smooth', block: 'center'});
                             }
                         }
                     }
@@ -593,20 +555,22 @@ class HomePage {
                 e.preventDefault();
                 var current = document.activeElement;
 
-                // First keypress - focus first item
                 if (current.tagName === 'BODY' || !current.matches('.favorite-item:not(.empty), .recent-item, .category-item, .channel-item')) {
                     var firstItem = document.querySelector('.favorite-item:not(.empty), .recent-item, .category-item, .channel-item');
                     if (firstItem) {
                         firstItem.focus();
-                        firstItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        firstItem.scrollIntoView({behavior: 'smooth', block: 'center'});
                     }
                     return;
                 }
 
-                // Get all visible grids
                 var grids = ['#favorites-grid', '#recent-grid', '#categories-grid', '#channels-grid']
-                    .map(function(id) { return document.querySelector(id); })
-                    .filter(function(g) { return g && g.offsetParent !== null; });
+                    .map(function (id) {
+                        return document.querySelector(id);
+                    })
+                    .filter(function (g) {
+                        return g && g.offsetParent !== null;
+                    });
 
                 var grid = current.closest('#favorites-grid, #recent-grid, #categories-grid, #channels-grid');
                 if (!grid) return;
@@ -614,19 +578,16 @@ class HomePage {
                 var gridIdx = grids.indexOf(grid);
                 if (gridIdx === -1) return;
 
-                // Get items in current grid
-                var items = Array.from(grid.children).filter(function(el) {
+                var items = Array.from(grid.children).filter(function (el) {
                     return !el.classList.contains('empty') && el.offsetParent !== null;
                 });
                 var idx = items.indexOf(current);
                 if (idx === -1) return;
 
-                // Count columns
                 var firstY = items[0].getBoundingClientRect().top;
                 var cols = 0;
                 for (var i = 0; i < items.length; i++) {
-                    if (Math.abs(items[i].getBoundingClientRect().top - firstY) < 10) cols++;
-                    else break;
+                    if (Math.abs(items[i].getBoundingClientRect().top - firstY) < 10) cols++; else break;
                 }
                 if (cols === 0) cols = 3;
 
@@ -644,15 +605,13 @@ class HomePage {
                     if (target >= items.length) {
                         if (gridIdx < grids.length - 1) {
                             targetGrid = grids[gridIdx + 1];
-                            var nextItems = Array.from(targetGrid.children).filter(function(el) {
+                            var nextItems = Array.from(targetGrid.children).filter(function (el) {
                                 return !el.classList.contains('empty') && el.offsetParent !== null;
                             });
 
-                            // Recent'ten Categories'e geçişte her zaman ilk kategoriye (ilk eleman)
                             if (gridIdx === 1) {
                                 target = 0;
                             } else {
-                                // Favori → Recent ve diğer geçişlerde column hizalaması korunsun
                                 target = Math.min(col, nextItems.length - 1);
                             }
                         } else target = idx;
@@ -661,19 +620,17 @@ class HomePage {
                     if (row > 0) {
                         target = idx - cols;
                     } else if (gridIdx === 0) {
-                        // Favorites grid'te yukarı ok → search input'a focus
                         input.focus();
                         return;
                     } else if (gridIdx > 0) {
                         targetGrid = grids[gridIdx - 1];
-                        var prevItems = Array.from(targetGrid.children).filter(function(el) {
+                        var prevItems = Array.from(targetGrid.children).filter(function (el) {
                             return !el.classList.contains('empty') && el.offsetParent !== null;
                         });
                         var pFirstY = prevItems[0].getBoundingClientRect().top;
                         var pCols = 0;
                         for (var i = 0; i < prevItems.length; i++) {
-                            if (Math.abs(prevItems[i].getBoundingClientRect().top - pFirstY) < 10) pCols++;
-                            else break;
+                            if (Math.abs(prevItems[i].getBoundingClientRect().top - pFirstY) < 10) pCols++; else break;
                         }
                         var pRows = Math.ceil(prevItems.length / pCols);
                         var pRowStart = (pRows - 1) * pCols;
@@ -681,23 +638,21 @@ class HomePage {
                     }
                 }
 
-                // Focus
                 if (targetGrid) {
-                    var tItems = Array.from(targetGrid.children).filter(function(el) {
+                    var tItems = Array.from(targetGrid.children).filter(function (el) {
                         return !el.classList.contains('empty') && el.offsetParent !== null;
                     });
                     if (target >= 0 && target < tItems.length) {
                         tItems[target].focus();
-                        tItems[target].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        tItems[target].scrollIntoView({behavior: 'smooth', block: 'center'});
                     }
                 } else if (target !== idx && target >= 0 && target < items.length) {
                     items[target].focus();
-                    items[target].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    items[target].scrollIntoView({behavior: 'smooth', block: 'nearest'});
                 }
                 return;
             }
 
-            // Enter/OK
             if (e.key === 'Enter' || e.key === 'OK') {
                 if (document.activeElement.tagName !== 'INPUT') {
                     e.preventDefault();
@@ -708,7 +663,6 @@ class HomePage {
     }
 
     resumeChannel(channel) {
-        // Resume playing without killing the recording - just go to player
         console.log('Resuming channel:', channel.name, '(keeping recording alive)');
         this.addToWatchHistory(channel);
         window.location.href = '/player';
@@ -716,20 +670,22 @@ class HomePage {
 
     playChannel(channel) {
         var self = this;
-        var index = this.channels.findIndex(function(ch) { return ch.name === channel.name; });
+        var index = this.channels.findIndex(function (ch) {
+            return ch.name === channel.name;
+        });
 
         if (index !== -1) {
             console.log('Playing channel:', channel.name, 'at index:', index);
             fetch('/api/channel/change?index=' + index)
-                .then(function(response) {
+                .then(function (response) {
                     console.log('Channel change response:', response.status);
                     return response.json();
                 })
-                .then(function() {
+                .then(function () {
                     self.addToWatchHistory(self.channels[index]);
                     window.location.href = '/player';
                 })
-                .catch(function(err) {
+                .catch(function (err) {
                     console.error('Failed to change channel:', err);
                 });
         } else {
@@ -738,9 +694,6 @@ class HomePage {
     }
 }
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     window.homePage = new HomePage();
 });
-
-// Removed duplicate pageshow listener

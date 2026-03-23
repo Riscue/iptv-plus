@@ -5,30 +5,24 @@ const fs = require('fs');
 
 const ChannelController = require('./channel-controller');
 const BufferController = require('./buffer-controller');
-const { bufferDir } = require('./constants');
+const {bufferDir} = require('./constants');
 const logger = require('./logger');
 
-// Initialize directories
-fs.mkdirSync(bufferDir, { recursive: true });
+fs.mkdirSync(bufferDir, {recursive: true});
 
-// Clean up orphaned FFmpeg processes and old buffer files from previous sessions
 logger.log('SERVER', 'Cleaning up orphaned processes and old buffers...');
 BufferController.cleanupOrphaned();
 BufferController.cleanupAllBuffers();
 
 const app = express();
 
-// Middleware
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
-// Buffer/HLS segments serving (must be before static)
 app.use('/buffer', express.static(bufferDir));
 
-// Static files (public is inside views)
 app.use('/public', express.static(path.join(__dirname, '../views/public')));
 
-// API Routes
 app.get('/api/channels', ChannelController.getChannelList);
 app.get('/api/categories', ChannelController.getCategories);
 app.get('/api/channels/search', ChannelController.searchChannels);
@@ -38,24 +32,18 @@ app.get('/api/buffer/status', BufferController.getStatus);
 app.get('/api/buffer/heartbeat', BufferController.heartbeat);
 app.post('/api/buffer/stop', BufferController.stop);
 
-// Build info endpoint
 app.get('/api/build-info', (req, res) => {
     try {
         const buildInfoPath = path.join(__dirname, 'build-info.json');
         const buildInfo = JSON.parse(fs.readFileSync(buildInfoPath, 'utf-8'));
         res.json(buildInfo);
     } catch (err) {
-        // Build info not found, return basic info
         res.json({
-            commit: 'unknown',
-            branch: 'unknown',
-            commitDate: null,
-            buildDate: new Date().toISOString()
+            commit: 'unknown', branch: 'unknown', commitDate: null, buildDate: new Date().toISOString()
         });
     }
 });
 
-// Routes
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../views/index.html'));
 });
@@ -64,12 +52,10 @@ app.get('/player', (req, res) => {
     res.sendFile(path.join(__dirname, '../views/player.html'));
 });
 
-// Favicon (prevent 404)
 app.get('/favicon.ico', (req, res) => {
     res.status(204).end();
 });
 
-// Shutdown handler
 process.on('SIGTERM', () => {
     logger.log('SERVER', 'SIGTERM received, shutting down...');
     BufferController.stopBuffer();
@@ -82,7 +68,6 @@ process.on('SIGINT', () => {
     process.exit(0);
 });
 
-// Start server
 app.listen(3000, () => {
     logger.log('SERVER', 'IPTV Plus Started');
     logger.log('SERVER', 'URL: http://localhost:3000');

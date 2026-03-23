@@ -1,4 +1,4 @@
-(function() {
+(function () {
     'use strict';
 
     var debugPanel = document.getElementById('debug-panel');
@@ -13,32 +13,29 @@
     var logs = [];
     var maxKeyEvents = 20;
     var maxLogs = 50;
-    var longPressTimer = null;
-    var LONG_PRESS_DURATION = 2000; // 2 seconds
     var buildInfo = null;
 
-    // Toggle debug panel
     function toggleDebugPanel() {
         debugPanel.classList.toggle('hidden');
     }
 
-    // Load build info
     function loadBuildInfo() {
         if (!debugBuildInfo) return;
 
         fetch('/api/build-info')
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
+            .then(function (res) {
+                return res.json();
+            })
+            .then(function (data) {
                 buildInfo = data;
                 renderBuildInfo();
             })
-            .catch(function(err) {
+            .catch(function (err) {
                 console.error('[DEBUG] Failed to load build info:', err);
                 debugBuildInfo.innerHTML = '<div class="debug-build-row"><span class="debug-build-value">Build info unavailable</span></div>';
             });
     }
 
-    // Render build info
     function renderBuildInfo() {
         if (!debugBuildInfo || !buildInfo) return;
 
@@ -56,7 +53,6 @@
             '<span class="debug-build-label">Build:</span> <span class="debug-build-value">' + escapeHtml(buildTime) + '</span>';
     }
 
-    // Log key event
     function logKeyEvent(e) {
         var eventInfo = {
             key: e.key || 'N/A',
@@ -78,10 +74,9 @@
         renderKeyEvents();
     }
 
-    // Render key events
     function renderKeyEvents() {
         if (!debugKeyEvents) return;
-        debugKeyEvents.innerHTML = keyEvents.map(function(e) {
+        debugKeyEvents.innerHTML = keyEvents.map(function (e) {
             return '<div class="debug-event-item">' +
                 '<span class="debug-event-time">[' + e.time + ']</span> ' +
                 '<span class="debug-event-key">key: "' + escapeHtml(e.key) + '"</span> | ' +
@@ -95,14 +90,12 @@
         }).reverse().join('');
     }
 
-    // Escape HTML to prevent XSS
     function escapeHtml(text) {
         var div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
 
-    // Console log capture (only once globally)
     if (!window._debugConsolePatched) {
         window._debugConsolePatched = true;
 
@@ -113,7 +106,7 @@
         };
 
         function addLog(type, args) {
-            var message = Array.prototype.slice.call(args).map(function(arg) {
+            var message = Array.prototype.slice.call(args).map(function (arg) {
                 if (typeof arg === 'object') {
                     try {
                         return JSON.stringify(arg);
@@ -139,7 +132,7 @@
 
         function renderLogs() {
             if (!debugLogs) return;
-            debugLogs.innerHTML = logs.map(function(log) {
+            debugLogs.innerHTML = logs.map(function (log) {
                 return '<div class="debug-log-item">' +
                     '<span class="debug-log-time">[' + log.time + ']</span> ' +
                     '<span class="debug-log-' + log.type + '">' + escapeHtml(log.message) + '</span>' +
@@ -147,27 +140,24 @@
             }).reverse().join('');
         }
 
-        // Override console methods globally
-        console.log = function() {
+        console.log = function () {
             originalConsole.log.apply(console, arguments);
             addLog('info', arguments);
         };
 
-        console.warn = function() {
+        console.warn = function () {
             originalConsole.warn.apply(console, arguments);
             addLog('warn', arguments);
         };
 
-        console.error = function() {
+        console.error = function () {
             originalConsole.error.apply(console, arguments);
             addLog('error', arguments);
         };
 
-        // Store render function globally for other instances
         window._debugRenderLogs = renderLogs;
         window._debugLogs = logs;
     } else {
-        // Already patched, just sync logs
         if (window._debugLogs) {
             logs = window._debugLogs;
         }
@@ -176,46 +166,20 @@
         }
     }
 
-    // Keyboard shortcuts
-    document.addEventListener('keydown', function(e) {
-        // Log all key events
+    document.addEventListener('keydown', function (e) {
         logKeyEvent(e);
 
-        // PC: Toggle debug panel with Ctrl/Cmd + Shift + D
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
             e.preventDefault();
             toggleDebugPanel();
-            return;
-        }
-
-        // TV Remote: Info button long press (keyCode 457, 1018, or key === 'Info')
-        if (e.keyCode === 457 || e.keyCode === 1018 || e.key === 'Info') {
-            if (!longPressTimer) {
-                longPressTimer = setTimeout(function() {
-                    toggleDebugPanel();
-                    longPressTimer = null;
-                }, LONG_PRESS_DURATION);
-            }
         }
     });
 
-    document.addEventListener('keyup', function(e) {
-        // Cancel long press if released early
-        if (e.keyCode === 457 || e.keyCode === 1018 || e.key === 'Info') {
-            if (longPressTimer) {
-                clearTimeout(longPressTimer);
-                longPressTimer = null;
-            }
-        }
-    });
-
-    // Close button
     if (debugClose) {
         debugClose.addEventListener('click', toggleDebugPanel);
     }
 
-    // Load build info on init
     loadBuildInfo();
 
-    console.log('[DEBUG] Debug panel initialized. PC: Ctrl/Cmd + Shift + D | TV: Info tuşuna 2 sn basılı tut.');
+    console.log('[DEBUG] Debug panel initialized. PC: Ctrl/Cmd + Shift + D');
 })();
