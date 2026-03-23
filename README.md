@@ -1,5 +1,14 @@
 # IPTV Plus
 
+[![License][license-shield]](LICENSE.md)
+
+[license-shield]: https://img.shields.io/github/license/Riscue/iptv-plus.svg?style=for-the-badge
+
+[![GitHub Downloads (all assets, latest release)](https://img.shields.io/github/downloads/Riscue/iptv-plus/latest/total?label=downloads&style=for-the-badge)](https://github.com/Riscue/iptv-plus/releases)
+
+[![GitHub Release](https://img.shields.io/github/release/Riscue/iptv-plus.svg?style=for-the-badge)](https://github.com/Riscue/iptv-plus/releases)
+[![GitHub Activity](https://img.shields.io/github/commit-activity/y/Riscue/iptv-plus.svg?style=for-the-badge)](https://github.com/Riscue/iptv-plus/commits/master)
+
 Gelişmiş bellek yönetimi (memory leak safe), kesintisiz DVR özelliği ve Akıllı TV (Smart TV) uyumluluğu ile donatılmış,
 TV kumandası veya klavye destekli modern IPTV oynatıcı.
 
@@ -96,6 +105,6 @@ docker run -d \
 4. **Tasarruf:** Sekmeyi kapattığınız an arkada biriken çöp dosyalar (orphan segments) ve FFMPEG kayıt işlemleri sistem
    tarafından tespit edilip temizlenir.
 
-## 📜 Lisans
+## License
 
-MIT License
+MIT © [Riscue](https://github.com/riscue)
