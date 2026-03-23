@@ -9,76 +9,105 @@
 [![GitHub Release](https://img.shields.io/github/release/Riscue/iptv-plus.svg?style=for-the-badge)](https://github.com/Riscue/iptv-plus/releases)
 [![GitHub Activity](https://img.shields.io/github/commit-activity/y/Riscue/iptv-plus.svg?style=for-the-badge)](https://github.com/Riscue/iptv-plus/commits/master)
 
-Gelişmiş bellek yönetimi (memory leak safe), kesintisiz DVR özelliği ve Akıllı TV (Smart TV) uyumluluğu ile donatılmış,
-TV kumandası veya klavye destekli modern IPTV oynatıcı.
+A modern IPTV player featuring advanced memory management (memory-leak-safe), seamless DVR functionality, and Smart TV
+compatibility with full TV remote and keyboard support.
 
-Kanalları canlı izlerken istediğiniz an yayını dondurabilir, geriye sarabilir ve tekrar canlı yayına dönebilirsiniz.
+Pause, rewind, and return to live broadcast at any time while watching your favorite channels.
 
-## 🚀 Öne Çıkan Özellikler
+## Features
 
-- 📺 **Donanımsal ve Yazılımsal HLS Desteği** - Cihazın codec yeteneklerine göre Native veya HLS.js ile M3U8 oynatımı.
-- ⏪ **180 Dakika Kesintisiz DVR** - İzlediğiniz kanal anlık olarak diske indirilir (FFMPEG ile). 3 saate kadar geriye
-  sarabilirsiniz.
-- 🎮 **Akıllı TV D-Pad Navigasyonu** - Gelişmiş matris koordinat sistemi ile klavye veya TV kumandası ok tuşlarıyla tüm
-  ekranda pürüzsüz gezinti.
-- 🛡️ **VOD (Sinema/Dizi) Filtreleme** - Sadece Canlı TV kanallarını alır, .mp4/.mkv gibi VOD uzantılarını ve
-  kategorilerini otomatik filtreler.
-- 🔒 **Eşzamanlılık Koruması (Locking)** - Aynı anda bağlanan çoklu kullanıcılarda playlist doyasının çakışmasını önleyen
-  indirme kilidi (Download Promise Lock) mimarisi.
-- ⚡ **Otomatik Hayat Belirtisi (Heartbeat) & Tasarruf** - Kullanıcı uygulamadan çıktığında 5 dakika içinde sunucu FFMPEG
-  sürecini keserek bant genişliği ve donanım tasarrufu sağlar.
-- 🌟 **Favori Kanallar** - 1-9 numaralı tuşlar ile atama yapma, uzun basma (long-press) ile hızlı favori yönetimi.
-- 📊 **Akıllı İzleme Geçmişi** - En çok izlenen veya o an yayını devam eden (DVR statüsündeki) kanalları en üste taşır.
+- **Hardware & Software HLS Support** - Native HLS or HLS.js playback based on device codec capabilities
+- **180-Minute Continuous DVR** - Live streams are recorded to disk via FFmpeg. Rewind up to 3 hours into the past
+- **Smart TV D-Pad Navigation** - Advanced matrix coordinate system for smooth navigation using keyboard arrow keys or
+  TV remote control
+- **VOD Filtering** - Automatically filters out VOD content (`.mp4`, `.mkv` files and movie/cinema categories) to show
+  only live TV channels
+- **Concurrency Protection** - Download lock architecture prevents playlist file conflicts when multiple users access
+  simultaneously
+- **Auto Heartbeat & Resource Saving** - When user exits, FFmpeg process stops after 5 minutes of inactivity, saving
+  bandwidth and system resources
+- **Favorite Channels** - Quick access slots 1-9 with long-press assignment for fast favorite management
+- **Smart Watch History** - Prioritizes most-watched channels and currently recording (DVR active) channels at the top
+- **Debug Panel** - Built-in debugging interface (`Ctrl/Cmd + Shift + D`) for keyboard event logging and console output
 
-## 📺 TV Kumandası ve Klavye Kısayolları
+## TV Remote & Keyboard Shortcuts
 
-| Tuş / Kumanda    | İşlev                                           |
-|------------------|-------------------------------------------------|
-| **1-9**          | Favori kanallara hızlı geçiş (Ana Sayfada)      |
-| **OK / Enter**   | Oynat / Duraklat / Seç                          |
-| **↑ ↓ ← →**      | Menülerde gezinme / Oynatıcıda 10 sn ileri/geri |
-| **Kırmızı Tuş**  | Geri sarılmış yayından 'CANLI' konuma zıplama   |
-| **Sarı Tuş**     | Tam Ekran (Fullscreen)                          |
-| **Mavi Tuş**     | Player içindeyken yanda Kanal Listesini açma    |
-| **Exit / Back**  | Kanal listesini kapat / Kategoriye dön          |
-| **Harf Tuşları** | Arama kutusuna otomatik odaklanma               |
+### Home Page (Anasayfa)
 
-## 🛠️ Teknik Altyapı ve Mimarisi
+| PC Keyboard | TV Remote    | Function                                  |
+|-------------|--------------|-------------------------------------------|
+| 1-9         | 1-9          | Quick jump to favorite channels           |
+| Arrow Keys  | D-Pad (↑↓←→) | Navigation                                |
+| Enter       | OK           | Select focused item                       |
+| Escape      | Back         | Return to category / Clear search         |
+| A-Z         | -            | Auto-focus search box                     |
+| -           | Yellow       | Add/Remove current channel from favorites |
+| -           | Green        | Resume currently recording channel        |
 
-- **Backend:** `Node.js` + `Express`
-- **Görüntü İşleme:** `FFmpeg` (Buffer klasörüne anlık `.ts` parçalama)
-- **Frontend:** Vanilla JS, CSS3 Glassmorphism (TV Ekranlarına özel devasa font yapıları ve overlay öncelik sistemi)
-- **Güvenlik:** FFMPEG başlatma/sonlandırma işlemlerinde RegEx korumalı PID denetimleri, zombi process temizleyici.
+### Player (Oynatıcı)
 
-## ⚙️ Kurulum
+| PC Keyboard      | TV Remote       | Function                                             |
+|------------------|-----------------|------------------------------------------------------|
+| Arrow Left/Right | D-Pad (←→)      | Seek 10s backward/forward (when UI hidden)           |
+| Arrow Up/Down    | D-Pad (↑↓)      | Navigate controls OR hide/show UI (up from top)      |
+| Enter            | OK              | Play/Pause OR execute planned seek (on progress bar) |
+| Space            | Play/Pause      | Play/Pause                                           |
+| Escape           | Back            | Return to Home page                                  |
+| Page Up/Down     | Channel Up/Down | Switch to next/previous channel                      |
+| F                | Yellow          | Toggle Fullscreen                                    |
+| -                | Red             | Jump to 'LIVE' from rewound position                 |
+| -                | Blue            | Toggle Channel List sidebar                          |
 
-### Yerel Ortamda Çalıştırma (Native)
+### Channel List (Kanal Listesi)
+
+| PC Keyboard   | TV Remote  | Function                   |
+|---------------|------------|----------------------------|
+| Arrow Up/Down | D-Pad (↑↓) | Navigate channel list      |
+| Enter         | OK         | Switch to selected channel |
+| Escape        | Back       | Close channel list         |
+
+### Debug Panel (All Pages)
+
+| PC Keyboard          | TV Remote | Function                                    |
+|----------------------|-----------|---------------------------------------------|
+| Ctrl/Cmd + Shift + D | -         | Toggle debug panel (keyboard events & logs) |
+
+## Technical Stack
+
+- **Backend:** Node.js + Express
+- **Video Processing:** FFmpeg (real-time `.ts` segmentation to buffer directory)
+- **Frontend:** Vanilla JavaScript, CSS3 Glassmorphism (TV-optimized large fonts and overlay priority system)
+- **Security:** Regex-protected PID validation for FFmpeg start/stop operations, zombie process cleanup
+
+## Installation
+
+### Running Locally (Native)
 
 ```bash
-# Bağımlılıkları yükle
+# Install dependencies
 npm install
 
-# .env dosyası oluştur
+# Create .env file
 echo "PLAYLIST_URL=https://playlist-url.m3u8" > .env
 
-# Sunucuyu başlat (FFmpeg bilgisayarınızda kurulu olmalıdır)
+# Start server (FFmpeg must be installed on your system)
 npm start
 ```
 
-Tarayıcıda açın: `http://localhost:3000`
+Open in browser: `http://localhost:3000`
 
-### Docker ile Çalıştırma (Önerilen)
+### Running with Docker (Recommended)
 
-Docker imajı arka planda otomatik olarak FFmpeg kurduğu için işletim sistemi bağımsız sorunsuz çalışır.
+Docker image automatically installs FFmpeg, ensuring OS-independent operation.
 
 ```bash
-# .env dosyası oluştur
+# Create .env file
 cat > .env << EOF
 PLAYLIST_URL=https://your-playlist-url.m3u8
 TZ=Europe/Istanbul
 EOF
 
-# Build et ve çalıştır
+# Build and run
 docker build -f docker/Dockerfile -t iptv-plus .
 docker run -d \
   -p 3000:3000 \
@@ -88,22 +117,35 @@ docker run -d \
   iptv-plus
 ```
 
-## 🎛️ Ortam Değişkenleri (Environment Variables)
+## Environment Variables
 
-| Değişken       | Zorunlu mu? | Varsayılan       | Açıklama                                    |
-|----------------|-------------|------------------|---------------------------------------------|
-| `PLAYLIST_URL` | Evet        | -                | IP TV Sağlayıcınızın M3U8 linki             |
-| `BUFFER_DIR`   | Hayır       | /tmp/iptv-buffer | FFMPEG'in stream dosyalarını yazacağı dizin |
-| `TZ`           | Hayır       | Europe/Istanbul  | Uygulama içi Saat / Zaman Dilimi            |
+| Variable       | Required | Default          | Description                                |
+|----------------|----------|------------------|--------------------------------------------|
+| `PLAYLIST_URL` | Yes      | -                | Your IPTV provider's M3U8 playlist URL     |
+| `BUFFER_DIR`   | No       | /tmp/iptv-buffer | Directory where FFmpeg writes stream files |
+| `TZ`           | No       | Europe/Istanbul  | Application timezone                       |
 
-## 📝 Kullanım Senaryoları
+## Usage
 
-1. **İzleme:** Ana sayfadan kategori seçip herhangi bir kanalı başlatın.
-2. **Favoriye Alma:** Herhangi bir kanal kutusuna fareyle (veya kumandanın OK tuşuyla) 1 saniye basılı tutun.
-3. **DVR Kullanımı:** Oynatıcıdayken Kumandanın sağ/sol oklarıyla veya ekrandaki butonlarla zamanda geriye gidip
-   reklamsız bölümleri atlayın.
-4. **Tasarruf:** Sekmeyi kapattığınız an arkada biriken çöp dosyalar (orphan segments) ve FFMPEG kayıt işlemleri sistem
-   tarafından tespit edilip temizlenir.
+1. **Watching:** Select a category from the home page and start any channel
+2. **Adding Favorites:** Long-press (1 second) on any channel box with mouse or OK button on remote
+3. **Using DVR:** While in player, use remote left/right arrows or on-screen buttons to rewind and skip commercials
+4. **Resource Saving:** When you close the tab, orphaned buffer segments and FFmpeg recording processes are
+   automatically detected and cleaned up
+
+## API Endpoints
+
+| Endpoint                | Method | Description                      |
+|-------------------------|--------|----------------------------------|
+| `/api/channels`         | GET    | Get all channels with categories |
+| `/api/categories`       | GET    | Get category list with counts    |
+| `/api/channels/search`  | GET    | Search channels by name          |
+| `/api/channel/current`  | GET    | Get current playing channel      |
+| `/api/channel/change`   | GET    | Change channel                   |
+| `/api/buffer/status`    | GET    | Get recording status             |
+| `/api/buffer/heartbeat` | GET    | Update activity heartbeat        |
+| `/api/buffer/stop`      | POST   | Stop recording                   |
+| `/api/build-info`       | GET    | Get build version info           |
 
 ## License
 
