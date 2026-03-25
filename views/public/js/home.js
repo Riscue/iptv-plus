@@ -604,15 +604,27 @@ class HomePage {
                     target = idx + cols;
                     if (target >= items.length) {
                         if (gridIdx < grids.length - 1) {
-                            targetGrid = grids[gridIdx + 1];
-                            var nextItems = Array.from(targetGrid.children).filter(function (el) {
-                                return !el.classList.contains('empty') && el.offsetParent !== null;
-                            });
-
-                            if (gridIdx === 1) {
-                                target = 0;
-                            } else {
-                                target = Math.min(col, nextItems.length - 1);
+                            // Try next grids, going down until we find items
+                            var searchGridIdx = gridIdx + 1;
+                            while (searchGridIdx < grids.length) {
+                                targetGrid = grids[searchGridIdx];
+                                var nextItems = Array.from(targetGrid.children).filter(function (el) {
+                                    return !el.classList.contains('empty') && el.offsetParent !== null;
+                                });
+                                if (nextItems.length > 0) {
+                                    // Found items in this grid
+                                    if (searchGridIdx === 1) {
+                                        target = 0;
+                                    } else {
+                                        target = Math.min(col, nextItems.length - 1);
+                                    }
+                                    break;
+                                }
+                                searchGridIdx++;
+                            }
+                            // All next grids empty, stay in place
+                            if (searchGridIdx >= grids.length) {
+                                target = idx;
                             }
                         } else target = idx;
                     }
@@ -623,18 +635,36 @@ class HomePage {
                         input.focus();
                         return;
                     } else if (gridIdx > 0) {
-                        targetGrid = grids[gridIdx - 1];
-                        var prevItems = Array.from(targetGrid.children).filter(function (el) {
-                            return !el.classList.contains('empty') && el.offsetParent !== null;
-                        });
-                        var pFirstY = prevItems[0].getBoundingClientRect().top;
-                        var pCols = 0;
-                        for (var i = 0; i < prevItems.length; i++) {
-                            if (Math.abs(prevItems[i].getBoundingClientRect().top - pFirstY) < 10) pCols++; else break;
+                        // Try previous grids, going up until we find items
+                        var searchGridIdx = gridIdx - 1;
+                        while (searchGridIdx >= 0) {
+                            targetGrid = grids[searchGridIdx];
+                            var prevItems = Array.from(targetGrid.children).filter(function (el) {
+                                return !el.classList.contains('empty') && el.offsetParent !== null;
+                            });
+                            if (prevItems.length > 0) {
+                                // Found items in this grid
+                                var pFirstY = prevItems[0].getBoundingClientRect().top;
+                                var pCols = 0;
+                                for (var i = 0; i < prevItems.length; i++) {
+                                    if (Math.abs(prevItems[i].getBoundingClientRect().top - pFirstY) < 10) pCols++; else break;
+                                }
+                                var pRows = Math.ceil(prevItems.length / pCols);
+                                var pRowStart = (pRows - 1) * pCols;
+                                target = Math.min(pRowStart + col, prevItems.length - 1);
+                                break;
+                            }
+                            searchGridIdx--;
                         }
-                        var pRows = Math.ceil(prevItems.length / pCols);
-                        var pRowStart = (pRows - 1) * pCols;
-                        target = Math.min(pRowStart + col, prevItems.length - 1);
+                        // All grids empty, go to search box
+                        if (searchGridIdx < 0) {
+                            var searchInput = document.getElementById('search-input');
+                            if (searchInput) {
+                                searchInput.focus();
+                                return;
+                            }
+                            target = idx;
+                        }
                     }
                 }
 
