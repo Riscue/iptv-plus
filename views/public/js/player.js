@@ -18,6 +18,9 @@ class IPTVPlayer {
         this.autoFullscreenDone = false;
         this.overlayTimer = null;
         this.overlayType = null;
+        this.debugKeyPresses = 0;
+        this.debugKeySequence = [];
+        this.debugKeyTimer = null;
 
         this.indicatorPriority = {
             'loading': 1,
@@ -593,6 +596,13 @@ class IPTVPlayer {
         }
     }
 
+    toggleDebugPanel() {
+        var debugPanel = document.getElementById('debug-panel');
+        if (debugPanel) {
+            debugPanel.classList.toggle('hidden');
+        }
+    }
+
     setupFullscreenFocusRestore() {
         var handler = function () {
             setTimeout(function () {
@@ -942,6 +952,27 @@ class IPTVPlayer {
             if (e.keyCode === 1016) {
                 e.preventDefault();
                 self.toggleFullscreen();
+            }
+
+            // Debug sequence: 0 -> 0 -> 0 -> Blue (406)
+            if (e.keyCode === 48) { // 0 key
+                clearTimeout(self.debugKeyTimer);
+                self.debugKeySequence.push(48);
+                if (self.debugKeySequence.length > 3) {
+                    self.debugKeySequence.shift();
+                }
+                self.debugKeyTimer = setTimeout(function () {
+                    self.debugKeySequence = [];
+                }, 2000);
+            } else if (e.keyCode === 406) { // Blue key
+                if (self.debugKeySequence.length === 3 &&
+                    self.debugKeySequence[0] === 48 &&
+                    self.debugKeySequence[1] === 48 &&
+                    self.debugKeySequence[2] === 48) {
+                    self.toggleDebugPanel();
+                    self.debugKeySequence = [];
+                    clearTimeout(self.debugKeyTimer);
+                }
             }
 
             if (e.keyCode === 427 || e.key === 'ChannelUp' || e.keyCode === 33) {
