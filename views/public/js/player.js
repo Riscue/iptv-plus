@@ -567,23 +567,31 @@ class IPTVPlayer {
 
         if (!document.fullscreenElement) {
             if (elem.requestFullscreen) {
-                elem.requestFullscreen();
+                elem.requestFullscreen().catch(() => {
+                });
             } else if (elem.webkitRequestFullscreen) {
-                elem.webkitRequestFullscreen();
+                elem.webkitRequestFullscreen().catch(() => {
+                });
             } else if (elem.mozRequestFullScreen) {
-                elem.mozRequestFullScreen();
+                elem.mozRequestFullScreen().catch(() => {
+                });
             } else if (elem.msRequestFullscreen) {
-                elem.msRequestFullscreen();
+                elem.msRequestFullscreen().catch(() => {
+                });
             }
         } else {
             if (document.exitFullscreen) {
-                document.exitFullscreen();
+                document.exitFullscreen().catch(() => {
+                });
             } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
+                document.webkitExitFullscreen().catch(() => {
+                });
             } else if (document.mozCancelFullScreen) {
-                document.mozCancelFullScreen();
+                document.mozCancelFullScreen().catch(() => {
+                });
             } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
+                document.msExitFullscreen().catch(() => {
+                });
             }
         }
     }
@@ -598,9 +606,7 @@ class IPTVPlayer {
     setupFullscreenFocusRestore() {
         var handler = function () {
             setTimeout(function () {
-                if (!document.activeElement || document.activeElement === document.body || document.activeElement.tagName === 'IFRAME') {
-                    document.body.focus();
-                }
+                document.body.focus();
             }, 100);
         };
         document.addEventListener('fullscreenchange', handler);
@@ -940,7 +946,11 @@ class IPTVPlayer {
 
             if (e.keyCode === TVKeyCodes.BACK) {
                 e.preventDefault();
-                history.back();
+                if (self.channelListVisible) {
+                    self.toggleChannelList(false);
+                } else {
+                    history.back();
+                }
             }
 
             if (e.keyCode === TVKeyCodes.DIGIT_0) {

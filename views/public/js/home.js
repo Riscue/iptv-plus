@@ -28,6 +28,7 @@ class HomePage {
         this.setupSearch();
         this.setupNavigation();
         this.setupPageShowHandler();
+        this.setupFullscreenFocusRestore();
         this.renderFavorites();
         this.renderRecent();
         this.renderCategories();
@@ -53,6 +54,18 @@ class HomePage {
                 }
             }, 100);
         });
+    }
+
+    setupFullscreenFocusRestore() {
+        var handler = function () {
+            setTimeout(function () {
+                document.body.focus();
+            }, 100);
+        };
+        document.addEventListener('fullscreenchange', handler);
+        document.addEventListener('webkitfullscreenchange', handler);
+        document.addEventListener('mozfullscreenchange', handler);
+        document.addEventListener('MSFullscreenChange', handler);
     }
 
     async loadData() {
