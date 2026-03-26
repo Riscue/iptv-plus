@@ -1154,12 +1154,8 @@ class IPTVPlayer {
         var icon = btnPlayPause.querySelector('.btn-icon');
         if (this.video.paused) {
             icon.innerHTML = Icons.PLAY;
-            btnPlayPause.classList.add('active');
-            btnPlayPause.classList.remove('inactive');
         } else {
             icon.innerHTML = Icons.PAUSE;
-            btnPlayPause.classList.add('active');
-            btnPlayPause.classList.remove('inactive');
         }
     }
 

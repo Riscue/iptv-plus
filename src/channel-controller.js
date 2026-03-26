@@ -143,8 +143,12 @@ class ChannelController {
 
     static async getChannelList(req, res) {
         try {
-            await ChannelController.downloadPlaylist();
-            const channels = ChannelController.loadChannels();
+            if (channelsCache.length === 0) {
+                await ChannelController.downloadPlaylist();
+                ChannelController.loadChannels();
+            }
+
+            const channels = channelsCache;
 
             logger.log('PLAYLIST', 'Serving: ' + channels.length + ' channels, ' + categories.length + ' categories');
 

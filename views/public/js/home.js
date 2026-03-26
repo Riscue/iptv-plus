@@ -1,4 +1,14 @@
 class HomePage {
+    static escapeHtml(unsafe) {
+        if (typeof unsafe !== 'string') return unsafe;
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
     constructor() {
         this.categories = [];
         this.channels = [];
@@ -180,7 +190,7 @@ class HomePage {
             div.dataset.index = i;
 
             if (channel) {
-                div.innerHTML = '<span class="dial-number">' + (i + 1) + '</span>' + '<span class="channel-name">' + channel.name + '</span>';
+                div.innerHTML = '<span class="dial-number">' + (i + 1) + '</span>' + '<span class="channel-name">' + HomePage.escapeHtml(channel.name) + '</span>';
                 div.tabIndex = 0;
             } else {
                 div.className = 'favorite-item empty';
@@ -266,7 +276,7 @@ class HomePage {
             var isRecording = self.currentRecording && item.name === self.currentRecording.name;
             var timeStr = new Date(item.lastWatched).toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'});
             var recordingBadge = isRecording ? '<div class="recording-badge">' + Messages.RECORDING + '</div>' : '<div class="watch-count">' + Messages.TIME_PREFIX + ' ' + timeStr + '</div>';
-            return '<div class="recent-item' + (isRecording ? ' recording' : '') + '" data-index="' + globalIndex + '" data-recording="' + isRecording + '" tabindex="0">' + '<div class="channel-name">' + item.name + '</div>' + recordingBadge + '</div>';
+            return '<div class="recent-item' + (isRecording ? ' recording' : '') + '" data-index="' + globalIndex + '" data-recording="' + isRecording + '" tabindex="0">' + '<div class="channel-name">' + HomePage.escapeHtml(item.name) + '</div>' + recordingBadge + '</div>';
         }).join('');
 
         grid.onclick = function (e) {
@@ -305,7 +315,7 @@ class HomePage {
         var self = this;
 
         grid.innerHTML = this.categories.map(function (cat) {
-            return '<div class="category-item" data-category="' + cat.name + '" tabindex="0">' + '<div class="category-name">' + cat.name + '</div>' + '<div class="category-count">' + cat.count + ' channels</div>' + '</div>';
+            return '<div class="category-item" data-category="' + HomePage.escapeHtml(cat.name) + '" tabindex="0">' + '<div class="category-name">' + HomePage.escapeHtml(cat.name) + '</div>' + '<div class="category-count">' + cat.count + ' channels</div>' + '</div>';
         }).join('');
 
         grid.onclick = function (e) {
@@ -384,7 +394,7 @@ class HomePage {
 
         grid.innerHTML = channels.map(function (ch) {
             var globalIndex = self.channels.indexOf(ch);
-            return '<div class="channel-item" data-index="' + globalIndex + '" tabindex="0">' + '<div class="channel-name">' + ch.name + '</div>' + '</div>';
+            return '<div class="channel-item" data-index="' + globalIndex + '" tabindex="0">' + '<div class="channel-name">' + HomePage.escapeHtml(ch.name) + '</div>' + '</div>';
         }).join('');
 
         grid.onclick = function (e) {
@@ -509,7 +519,7 @@ class HomePage {
                     self.saveFavorites();
                     self.renderFavorites();
                     self.showNotification(Messages.REMOVED_FROM_FAVORITES);
-                } else if (active.classList.contains('recent-item') || active.classList.contains('channel-item') || active.classList.contains('category-item')) {
+                } else if (active.classList.contains('recent-item') || active.classList.contains('channel-item')) {
                     var index = parseInt(active.dataset.index);
                     channel = self.channels[index];
                     if (channel) {
