@@ -980,8 +980,10 @@ class IPTVPlayer {
                     self.toggleFullscreen();
                     break;
                 case TVKeyCodes.BLUE:
-                    e.preventDefault();
-                    self.toggleChannelList();
+                    if (self.debugKeySequence.length !== 3) {
+                        e.preventDefault();
+                        self.toggleChannelList();
+                    }
                     break;
             }
 
