@@ -284,7 +284,7 @@ class IPTVPlayer {
     setupNativeHls(url) {
         this.video.src = url;
         this.video.addEventListener('loadedmetadata', () => {
-            this.hideIndicator();
+            this.hideIndicator(IndicatorTypes.LOADING);
             this.video.play().catch(() => {
             });
             this.isLoading = false;
@@ -311,11 +311,11 @@ class IPTVPlayer {
             history[channel.name].lastWatched = Date.now();
 
             var keys = Object.keys(history);
-            if (keys.length > 9) {
+            if (keys.length > UIConstants.MAX_WATCH_HISTORY) {
                 var sortedKeys = keys.sort(function (a, b) {
                     return history[b].lastWatched - history[a].lastWatched;
                 });
-                for (var i = 9; i < sortedKeys.length; i++) {
+                for (var i = UIConstants.MAX_WATCH_HISTORY; i < sortedKeys.length; i++) {
                     delete history[sortedKeys[i]];
                 }
             }
@@ -785,7 +785,7 @@ class IPTVPlayer {
             var currentCol = -1;
 
             for (var r = 0; r < rows.length; r++) {
-                if (rows[r] === null || rows[r].length === 0) continue;
+                if (!rows[r] || (Array.isArray(rows[r]) && rows[r].length === 0)) continue;
 
                 if (r === 1) {
                     if (currentFocus === rows[r]) {
@@ -837,7 +837,11 @@ class IPTVPlayer {
                     } else if (currentRow === 1) {
                         if (rows[2] && rows[2].length > 0) rows[2][0].focus();
                     } else if (currentRow === 2) {
-                        if (rows[2] && rows[2].length > 0) rows[2][0].focus();
+                        // Wrap to top row
+                        if (rows[0] && rows[0].length > 0) {
+                            var midCol = Math.floor(rows[0].length / 2);
+                            rows[0][midCol]?.focus();
+                        }
                     }
                     break;
 

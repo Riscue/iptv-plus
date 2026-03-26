@@ -158,7 +158,7 @@
             addErrorLog('UNHANDLED PROMISE', String(event.reason), details);
         };
 
-        function renderLogs() {
+        var renderLogs = function() {
             if (!debugLogs) return;
             debugLogs.innerHTML = logs.map(function (log) {
                 return '<div class="debug-log-item">' +
@@ -166,7 +166,7 @@
                     '<span class="debug-log-' + log.type + '">' + escapeHtml(log.message) + '</span>' +
                     '</div>';
             }).reverse().join('');
-        }
+        };
 
         console.log = function () {
             originalConsole.log.apply(console, arguments);
