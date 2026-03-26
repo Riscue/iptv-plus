@@ -948,15 +948,6 @@ class IPTVPlayer {
                 self.debugKeyTimer = setTimeout(function () {
                     self.debugKeySequence = [];
                 }, TimeConstants.DEBUG_SEQUENCE_TIMEOUT);
-            } else if (e.keyCode === TVKeyCodes.BLUE) {
-                if (self.debugKeySequence.length === 3 &&
-                    self.debugKeySequence[0] === TVKeyCodes.DIGIT_0 &&
-                    self.debugKeySequence[1] === TVKeyCodes.DIGIT_0 &&
-                    self.debugKeySequence[2] === TVKeyCodes.DIGIT_0) {
-                    self.toggleDebugPanel();
-                    self.debugKeySequence = [];
-                    clearTimeout(self.debugKeyTimer);
-                }
             }
 
             if (e.keyCode === TVKeyCodes.CHANNEL_UP_KEY || e.key === TVKeyCodes.CHANNEL_UP || e.keyCode === TVKeyCodes.PAGE_UP) {
@@ -980,7 +971,13 @@ class IPTVPlayer {
                     self.toggleFullscreen();
                     break;
                 case TVKeyCodes.BLUE:
-                    if (self.debugKeySequence.length !== 3) {
+                    if (self.debugKeySequence.length === 3) {
+                        if (self.debugKeySequence[0] === TVKeyCodes.DIGIT_0 && self.debugKeySequence[1] === TVKeyCodes.DIGIT_0 && self.debugKeySequence[2] === TVKeyCodes.DIGIT_0) {
+                            self.toggleDebugPanel();
+                            self.debugKeySequence = [];
+                            clearTimeout(self.debugKeyTimer);
+                        }
+                    } else {
                         e.preventDefault();
                         self.toggleChannelList();
                     }
@@ -1120,7 +1117,11 @@ class IPTVPlayer {
                     var newTime = percent * self.video.duration;
                     var diff = Math.round(newTime - self.video.currentTime);
                     self.video.currentTime = newTime;
-                    self.showIndicator(IndicatorTypes.PLAN, {seconds: diff, time: self.getRealTime(newTime), autoHide: true});
+                    self.showIndicator(IndicatorTypes.PLAN, {
+                        seconds: diff,
+                        time: self.getRealTime(newTime),
+                        autoHide: true
+                    });
                 }
             });
 
