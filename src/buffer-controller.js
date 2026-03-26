@@ -10,6 +10,7 @@ let cleanupInterval = null;
 let activityInterval = null;
 let lastActivity = Date.now();
 let bufferStartTime = null;
+
 const ACTIVITY_TIMEOUT = 300000;
 
 class BufferController {
@@ -68,38 +69,34 @@ class BufferController {
         return m3u8Path;
     }
 
+    static async startBufferWithRetry(channel, maxRetries = 3) {
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                return await BufferController.startBuffer(channel);
+            } catch (err) {
+                lastError = err;
+                logger.error('BUFFER', `startBuffer attempt ${attempt}/${maxRetries} failed:`, err.message);
+
+                if (attempt < maxRetries) {
+                    await BufferController.stopBuffer();
+                    const delay = Math.pow(2, attempt - 1) * 1000;
+                    logger.log('BUFFER', `Retrying in ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
+        throw new Error(`Failed to start buffer after ${maxRetries} attempts: ${lastError.message}`);
+    }
+
     static async stopBuffer() {
+
         if (ffmpegProcess) {
             logger.log('BUFFER', 'Stopping recording:', currentChannelName);
-
-            await new Promise((resolve) => {
-                let resolved = false;
-
-                const exitHandler = () => {
-                    if (!resolved) {
-                        resolved = true;
-                        ffmpegProcess = null;
-                        resolve();
-                    }
-                };
-
-                ffmpegProcess.once('exit', exitHandler);
-                ffmpegProcess.kill('SIGTERM');
-
-                setTimeout(() => {
-                    if (!resolved && ffmpegProcess) {
-                        logger.log('BUFFER', 'Force killing FFmpeg after timeout');
-                        ffmpegProcess.kill('SIGKILL');
-                        setTimeout(() => {
-                            if (!resolved) {
-                                resolved = true;
-                                ffmpegProcess = null;
-                                resolve();
-                            }
-                        }, 500);
-                    }
-                }, 2000);
-            });
+            await BufferController.gracefulShutdown(ffmpegProcess);
+            ffmpegProcess = null;
         }
 
         if (cleanupInterval) {
@@ -114,7 +111,11 @@ class BufferController {
         if (currentChannelName) {
             const channelPath = BufferController.getChannelBufferPath(currentChannelName);
             logger.log('BUFFER', 'Cleaning up buffer directory:', channelPath);
-            BufferController.cleanupChannel(channelPath);
+            try {
+                BufferController.cleanupChannel(channelPath);
+            } catch (err) {
+                logger.error('BUFFER', 'Failed to cleanup channel directory:', err.message);
+            }
         }
 
         currentChannelName = null;
@@ -122,33 +123,68 @@ class BufferController {
         logger.log('BUFFER', 'Recording stopped');
     }
 
+    static async gracefulShutdown(childProcess, timeoutMs = 2000) {
+        if (!childProcess) return;
+
+        return new Promise((resolve) => {
+            let resolved = false;
+            let killTimer = null;
+            let forceTimer = null;
+
+            const exitHandler = () => {
+                if (!resolved) {
+                    resolved = true;
+                    if (killTimer) clearTimeout(killTimer);
+                    if (forceTimer) clearTimeout(forceTimer);
+                    resolve();
+                }
+            };
+
+            childProcess.once('exit', exitHandler);
+            childProcess.kill('SIGTERM');
+
+            killTimer = setTimeout(() => {
+                if (!resolved && childProcess) {
+                    logger.log('BUFFER', 'Force killing after timeout');
+                    childProcess.kill('SIGKILL');
+
+                    forceTimer = setTimeout(() => {
+                        if (!resolved) {
+                            resolved = true;
+                            resolve();
+                        }
+                    }, 500);
+                }
+            }, timeoutMs);
+        });
+    }
+
     static async forceRecover() {
         logger.log('BUFFER', 'Force recovery initiated');
 
         if (ffmpegProcess) {
             try {
-                ffmpegProcess.kill('SIGKILL');
-            } catch (e) {
+                await BufferController.gracefulShutdown(ffmpegProcess, 1000);
+            } catch (err) {
+                logger.error('BUFFER', 'Error during force recovery:', err.message);
             }
             ffmpegProcess = null;
         }
 
-        const {spawn} = require('child_process');
-        return new Promise((resolve) => {
-            const safePattern = `ffmpeg.*${bufferDir.replace(/[^a-zA-Z0-9/_-]/g, '')}`;
-            spawn('pkill', ['-9', '-f', safePattern]).on('close', () => {
-                logger.log('BUFFER', 'Force recovery completed');
-                resolve();
-            });
-        });
+        try {
+            await BufferController.cleanupOrphanedProcesses();
+        } catch (err) {
+            logger.error('BUFFER', 'Failed to cleanup orphaned processes:', err.message);
+        }
+
+        logger.log('BUFFER', 'Force recovery completed');
     }
 
     static async changeChannel(newChannel) {
         BufferController.updateActivity();
         logger.log('BUFFER', 'Changing channel:', currentChannelName, '->', newChannel.name);
-        await BufferController.forceRecover();
         await BufferController.stopBuffer();
-        return await BufferController.startBuffer(newChannel);
+        return await BufferController.startBufferWithRetry(newChannel);
     }
 
     static getStatus(req, res) {
@@ -262,6 +298,7 @@ class BufferController {
                     try {
                         fs.unlinkSync(filePath);
                     } catch (e) {
+                        logger.error('BUFFER', 'Failed to delete old segment:', file, e.message);
                     }
                 });
 
@@ -279,16 +316,89 @@ class BufferController {
             }
         } catch (err) {
             logger.error('BUFFER', 'Channel cleanup error:', err.message);
+            throw err;
         }
     }
 
-    static cleanupOrphaned() {
-        spawn('pkill', ['-9', 'ffmpeg']).on('exit', (code) => {
-            if (code === 0) {
-                logger.log('BUFFER', 'Killed orphaned FFmpeg processes');
-            }
-        }).on('error', () => {
+    static async cleanupOrphanedProcesses() {
+        const bufferPath = bufferDir.replace(/[^a-zA-Z0-9/_.-]/g, '');
+
+        return new Promise((resolve, reject) => {
+            const ps = spawn('sh', ['-c', `ps aux | grep -E 'ffmpeg.*${bufferPath}' | grep -v grep`]);
+
+            let output = '';
+            ps.stdout.on('data', (data) => {
+                output += data.toString();
+            });
+
+            ps.on('close', (code) => {
+                if (code !== 0 || !output.trim()) {
+                    resolve();
+                    return;
+                }
+
+                const lines = output.trim().split('\n');
+                const pids = lines.map(line => {
+                    const parts = line.trim().split(/\s+/);
+                    return parseInt(parts[1]);
+                }).filter(pid => !isNaN(pid));
+
+                if (pids.length === 0) {
+                    resolve();
+                    return;
+                }
+
+                logger.log('BUFFER', 'Found orphaned FFmpeg processes:', pids.length);
+
+                let killed = 0;
+                pids.forEach(pid => {
+                    try {
+                        process.kill(pid, 'SIGTERM');
+                        killed++;
+                    } catch (err) {
+                        if (err.code !== 'ESRCH') {
+                            logger.error('BUFFER', `Failed to kill PID ${pid}:`, err.message);
+                        }
+                    }
+                });
+
+                if (killed > 0) {
+                    logger.log('BUFFER', `Killed ${killed} orphaned FFmpeg process(es)`);
+                }
+                resolve();
+            });
+
+            ps.on('error', (err) => {
+                logger.error('BUFFER', 'Failed to list processes:', err.message);
+                reject(err);
+            });
         });
+    }
+
+    static cleanupOrphaned() {
+        BufferController.cleanupOrphanedProcesses().catch(err => {
+            logger.error('BUFFER', 'cleanupOrphanedProcesses failed:', err.message);
+        });
+    }
+
+    static async cleanupAll() {
+        logger.log('BUFFER', 'Cleaning up all resources');
+
+        await BufferController.stopBuffer();
+
+        try {
+            await BufferController.cleanupOrphanedProcesses();
+        } catch (err) {
+            logger.error('BUFFER', 'Failed to cleanup orphaned processes:', err.message);
+        }
+
+        try {
+            BufferController.cleanupAllBuffers();
+        } catch (err) {
+            logger.error('BUFFER', 'Failed to cleanup all buffers:', err.message);
+        }
+
+        logger.log('BUFFER', 'All resources cleaned up');
     }
 }
 

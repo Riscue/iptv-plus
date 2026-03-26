@@ -56,15 +56,15 @@ app.get('/favicon.ico', (req, res) => {
     res.status(204).end();
 });
 
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
     logger.log('SERVER', 'SIGTERM received, shutting down...');
-    BufferController.stopBuffer();
+    await BufferController.cleanupAll();
     process.exit(0);
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
     logger.log('SERVER', 'SIGINT received, shutting down...');
-    BufferController.stopBuffer();
+    await BufferController.cleanupAll();
     process.exit(0);
 });
 
