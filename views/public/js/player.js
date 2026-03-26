@@ -548,12 +548,10 @@ class IPTVPlayer {
 
         if (show) {
             this.setupTabListeners();
-            // Aktif kategoriyi seçili getir
             if (!this.selectedCategory && this.currentCategory) {
                 this.selectedCategory = this.currentCategory;
             }
             this.switchTab(this.currentTab);
-            // Aktif kanalı focus et
             var activeItem = document.querySelector('.channel-item.active');
             if (activeItem) {
                 activeItem.scrollIntoView({block: 'center'});
@@ -716,7 +714,6 @@ class IPTVPlayer {
 
         document.addEventListener('keydown', function (e) {
             if (self.channelListVisible) {
-                // Tab navigation with left/right arrows
                 if (e.key === PCKeyCodes.ARROW_LEFT || e.key === PCKeyCodes.ARROW_RIGHT) {
                     var tabs = ['favorites', 'recent', 'all'];
                     var currentIdx = tabs.indexOf(self.currentTab);
@@ -726,7 +723,6 @@ class IPTVPlayer {
                             ? Math.min(currentIdx + 1, tabs.length - 1)
                             : Math.max(currentIdx - 1, 0);
                         self.switchTab(tabs[newIdx]);
-                        // Focus active tab button
                         var activeTab = document.querySelector('.list-tab.active');
                         if (activeTab) activeTab.focus();
                         return;
@@ -754,7 +750,6 @@ class IPTVPlayer {
                     if (items.length === 0) return;
 
                     var currentIndex = items.indexOf(document.activeElement);
-                    // Focus bir item'da değilse aktif kanaldan başla
                     if (currentIndex === -1) {
                         var activeEl = document.querySelector('.channel-item.active');
                         if (activeEl) {
@@ -878,7 +873,6 @@ class IPTVPlayer {
                     } else if (currentRow === 1) {
                         if (rows[2] && rows[2].length > 0) rows[2][0].focus();
                     } else if (currentRow === 2) {
-                        // Wrap to top row
                         if (rows[0] && rows[0].length > 0) {
                             var midCol = Math.floor(rows[0].length / 2);
                             rows[0][midCol]?.focus();
@@ -1261,8 +1255,6 @@ class IPTVPlayer {
         this.updateProgress();
     }
 
-    // --- Tab System ---
-
     loadFavorites() {
         try {
             var stored = localStorage.getItem(StorageKeys.FAVORITES);
@@ -1440,8 +1432,6 @@ class IPTVPlayer {
         if (typeof unsafe !== 'string') return unsafe;
         return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
-
-    // --- End Tab System ---
 
     renderChannelList(filter) {
         if (filter === undefined) filter = '';
