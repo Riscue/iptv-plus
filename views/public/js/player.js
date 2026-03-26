@@ -21,6 +21,10 @@ class IPTVPlayer {
         this.debugKeyPresses = 0;
         this.debugKeySequence = [];
         this.debugKeyTimer = null;
+        this.currentTab = 'favorites';
+        this.favorites = this.loadFavorites();
+        this.watchHistory = this.loadWatchHistory();
+        this.selectedCategory = null;
 
         this.indicatorPriority = IndicatorPriority;
 
@@ -320,6 +324,7 @@ class IPTVPlayer {
                 }
             }
             localStorage.setItem(StorageKeys.WATCH_HISTORY, JSON.stringify(history));
+            this.watchHistory = history;
         } catch (e) {
             console.error('Watch history error:', e);
         }
@@ -542,17 +547,17 @@ class IPTVPlayer {
         this.channelListVisible = show;
 
         if (show) {
-            this.renderChannelList();
-            var input = document.getElementById('search-input');
-            if (input) {
-                input.value = '';
+            this.setupTabListeners();
+            // Aktif kategoriyi seçili getir
+            if (!this.selectedCategory && this.currentCategory) {
+                this.selectedCategory = this.currentCategory;
             }
+            this.switchTab(this.currentTab);
+            // Aktif kanalı focus et
             var activeItem = document.querySelector('.channel-item.active');
             if (activeItem) {
                 activeItem.scrollIntoView({block: 'center'});
                 activeItem.focus();
-            } else if (input) {
-                input.focus();
             }
         }
     }
@@ -711,6 +716,23 @@ class IPTVPlayer {
 
         document.addEventListener('keydown', function (e) {
             if (self.channelListVisible) {
+                // Tab navigation with left/right arrows
+                if (e.key === PCKeyCodes.ARROW_LEFT || e.key === PCKeyCodes.ARROW_RIGHT) {
+                    var tabs = ['favorites', 'recent', 'all'];
+                    var currentIdx = tabs.indexOf(self.currentTab);
+                    if (currentIdx !== -1) {
+                        e.preventDefault();
+                        var newIdx = e.key === PCKeyCodes.ARROW_RIGHT
+                            ? Math.min(currentIdx + 1, tabs.length - 1)
+                            : Math.max(currentIdx - 1, 0);
+                        self.switchTab(tabs[newIdx]);
+                        // Focus active tab button
+                        var activeTab = document.querySelector('.list-tab.active');
+                        if (activeTab) activeTab.focus();
+                        return;
+                    }
+                }
+
                 if (e.target.id === 'search-input') {
                     if (e.key === PCKeyCodes.ESCAPE || e.keyCode === TVKeyCodes.BACK) {
                         e.preventDefault();
@@ -728,8 +750,19 @@ class IPTVPlayer {
 
                 if (e.key === PCKeyCodes.ARROW_UP || e.key === PCKeyCodes.ARROW_DOWN) {
                     e.preventDefault();
-                    var items = Array.from(document.querySelectorAll('.channel-item'));
+                    var items = Array.from(document.querySelectorAll('.channel-item, .fav-item:not(.empty), .recent-list-item'));
+                    if (items.length === 0) return;
+
                     var currentIndex = items.indexOf(document.activeElement);
+                    // Focus bir item'da değilse aktif kanaldan başla
+                    if (currentIndex === -1) {
+                        var activeEl = document.querySelector('.channel-item.active');
+                        if (activeEl) {
+                            currentIndex = items.indexOf(activeEl);
+                        } else {
+                            currentIndex = 0;
+                        }
+                    }
                     var targetIndex = (e.key === PCKeyCodes.ARROW_DOWN)
                         ? (currentIndex < items.length - 1 ? currentIndex + 1 : 0)
                         : (currentIndex > 0 ? currentIndex - 1 : items.length - 1);
@@ -740,11 +773,13 @@ class IPTVPlayer {
 
                 if (e.key === PCKeyCodes.ENTER || e.key === PCKeyCodes.OK) {
                     e.preventDefault();
-                    var focused = document.querySelector('.channel-item:focus');
+                    var focused = document.querySelector('.channel-item:focus, .fav-item:not(.empty):focus, .recent-list-item:focus');
                     if (focused) {
                         var idx = parseInt(focused.dataset.index);
-                        self.playChannel(idx);
-                        self.toggleChannelList(false);
+                        if (!isNaN(idx) && idx >= 0) {
+                            self.playChannel(idx);
+                            self.toggleChannelList(false);
+                        }
                     }
                     return;
                 }
@@ -1226,6 +1261,188 @@ class IPTVPlayer {
         this.updateProgress();
     }
 
+    // --- Tab System ---
+
+    loadFavorites() {
+        try {
+            var stored = localStorage.getItem(StorageKeys.FAVORITES);
+            if (stored) return JSON.parse(stored);
+        } catch (e) {
+        }
+        return Array(UIConstants.MAX_FAVORITES).fill(null);
+    }
+
+    saveFavorites() {
+        localStorage.setItem(StorageKeys.FAVORITES, JSON.stringify(this.favorites));
+    }
+
+    loadWatchHistory() {
+        try {
+            var stored = localStorage.getItem(StorageKeys.WATCH_HISTORY);
+            if (stored) return JSON.parse(stored);
+        } catch (e) {
+        }
+        return {};
+    }
+
+    setupTabListeners() {
+        var self = this;
+        var tabs = document.querySelectorAll('.list-tab');
+        tabs.forEach(function (tab) {
+            tab.onclick = function () {
+                self.switchTab(tab.dataset.tab);
+            };
+        });
+    }
+
+    switchTab(tabName) {
+        this.currentTab = tabName;
+
+        document.querySelectorAll('.list-tab').forEach(function (btn) {
+            btn.classList.toggle('active', btn.dataset.tab === tabName);
+        });
+
+        document.querySelectorAll('.tab-content').forEach(function (content) {
+            content.classList.add('hidden');
+        });
+
+        var tabEl = document.getElementById('tab-' + tabName);
+        if (tabEl) tabEl.classList.remove('hidden');
+
+        var searchEl = document.getElementById('tab-search-all');
+        if (searchEl) searchEl.classList.toggle('hidden', tabName !== 'all');
+
+        if (tabName === 'favorites') this.renderFavoritesTab();
+        else if (tabName === 'recent') this.renderRecentTab();
+        else if (tabName === 'all') this.renderAllTab();
+    }
+
+    renderFavoritesTab() {
+        var container = document.getElementById('tab-favorites');
+        if (!container) return;
+
+        var self = this;
+        var channels = this.channels;
+
+        var html = '';
+        for (var i = 0; i < UIConstants.MAX_FAVORITES; i++) {
+            var fav = this.favorites[i];
+            if (fav) {
+                var globalIdx = channels.findIndex(function (ch) { return ch.name === fav.name; });
+                var isActive = globalIdx === this.channelIndex;
+                html += '<div class="fav-item' + (isActive ? ' active' : '') + '" data-index="' + globalIdx + '" tabindex="0">' +
+                    '<span class="fav-number">' + (i + 1) + '</span>' +
+                    '<span class="fav-name">' + this.escapeHtml(fav.name) + '</span>' +
+                    '</div>';
+            } else {
+                html += '<div class="fav-item empty" tabindex="-1">' +
+                    '<span class="fav-number">' + (i + 1) + '</span>' +
+                    '<span class="fav-name"></span>' +
+                    '</div>';
+            }
+        }
+
+        container.innerHTML = html;
+
+        container.onclick = function (e) {
+            var item = e.target.closest('.fav-item:not(.empty)');
+            if (item) {
+                var idx = parseInt(item.dataset.index);
+                if (!isNaN(idx) && idx >= 0) {
+                    self.playChannel(idx);
+                    self.toggleChannelList(false);
+                }
+            }
+        };
+    }
+
+    renderRecentTab() {
+        var container = document.getElementById('tab-recent');
+        if (!container) return;
+
+        var self = this;
+        var channels = this.channels;
+
+        var sorted = Object.keys(this.watchHistory)
+            .map(function (name) {
+                var ch = channels.find(function (c) { return c.name === name; });
+                if (!ch) return null;
+                return {name: name, lastWatched: self.watchHistory[name].lastWatched, channel: ch};
+            })
+            .filter(function (item) { return item !== null; })
+            .sort(function (a, b) { return b.lastWatched - a.lastWatched; })
+            .slice(0, UIConstants.MAX_WATCH_HISTORY);
+
+        if (sorted.length === 0) {
+            container.innerHTML = '<div style="text-align:center;color:#666;padding:40px 0;">' + Messages.NO_CHANNELS_WATCHED + '</div>';
+            return;
+        }
+
+        container.innerHTML = sorted.map(function (item) {
+            var globalIdx = channels.indexOf(item.channel);
+            var isActive = globalIdx === self.channelIndex;
+            var timeStr = new Date(item.lastWatched).toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'});
+            return '<div class="recent-list-item' + (isActive ? ' active' : '') + '" data-index="' + globalIdx + '" tabindex="0">' +
+                '<span class="recent-name">' + self.escapeHtml(item.name) + '</span>' +
+                '<span class="recent-time">' + Messages.TIME_PREFIX + ' ' + timeStr + '</span>' +
+                '</div>';
+        }).join('');
+
+        container.onclick = function (e) {
+            var item = e.target.closest('.recent-list-item');
+            if (item) {
+                var idx = parseInt(item.dataset.index);
+                if (!isNaN(idx) && idx >= 0) {
+                    self.playChannel(idx);
+                    self.toggleChannelList(false);
+                }
+            }
+        };
+    }
+
+    renderAllTab() {
+        this.renderCategoryTabs();
+        this.renderChannelList();
+    }
+
+    renderCategoryTabs() {
+        var container = document.getElementById('category-tabs');
+        if (!container) return;
+
+        var self = this;
+        var categories = this.getCategories();
+
+        var html = '<button class="cat-tab' + (!this.selectedCategory ? ' active' : '') + '" data-category="">Tumu</button>';
+        categories.forEach(function (cat) {
+            html += '<button class="cat-tab' + (self.selectedCategory === cat ? ' active' : '') + '" data-category="' + self.escapeHtml(cat) + '">' + self.escapeHtml(cat) + '</button>';
+        });
+        container.innerHTML = html;
+
+        container.onclick = function (e) {
+            var tab = e.target.closest('.cat-tab');
+            if (tab) {
+                self.selectedCategory = tab.dataset.category || null;
+                self.renderCategoryTabs();
+                self.renderChannelList();
+            }
+        };
+    }
+
+    getCategories() {
+        var catSet = {};
+        this.channels.forEach(function (ch) {
+            catSet[ch.category] = true;
+        });
+        return Object.keys(catSet).sort();
+    }
+
+    escapeHtml(unsafe) {
+        if (typeof unsafe !== 'string') return unsafe;
+        return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    // --- End Tab System ---
+
     renderChannelList(filter) {
         if (filter === undefined) filter = '';
         var items = document.getElementById('channel-items');
@@ -1234,9 +1451,9 @@ class IPTVPlayer {
         var self = this;
 
         var filtered = this.channels;
-        if (this.currentCategory) {
+        if (this.selectedCategory) {
             filtered = this.channels.filter(function (ch) {
-                return ch.category === self.currentCategory;
+                return ch.category === self.selectedCategory;
             });
         }
 
@@ -1250,7 +1467,7 @@ class IPTVPlayer {
             var idx = self.channels.indexOf(ch);
             var isActive = idx === self.channelIndex;
             var classes = 'channel-item' + (isActive ? ' active' : '');
-            return '<div class="' + classes + '" data-index="' + idx + '" tabindex="0">' + ch.name + '</div>';
+            return '<div class="' + classes + '" data-index="' + idx + '" tabindex="0">' + self.escapeHtml(ch.name) + '</div>';
         }).join('');
 
         items.onclick = function (e) {

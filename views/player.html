@@ -36,10 +36,20 @@
                 <img src="/public/images/icons/close.svg" class="svg-icon" alt="">
             </button>
         </div>
-        <div class="list-search">
+        <div class="list-tabs">
+            <button class="list-tab active" data-tab="favorites">Favoriler</button>
+            <button class="list-tab" data-tab="recent">Son Izlenen</button>
+            <button class="list-tab" data-tab="all">Tumu</button>
+        </div>
+        <div class="list-search hidden" id="tab-search-all">
             <input id="search-input" type="text" placeholder="Search..." autocomplete="off">
         </div>
-        <div id="channel-items"></div>
+        <div id="tab-favorites" class="tab-content"></div>
+        <div id="tab-recent" class="tab-content hidden"></div>
+        <div id="tab-all" class="tab-content hidden">
+            <div id="category-tabs"></div>
+            <div id="channel-items"></div>
+        </div>
     </div>
 
     <div id="bottom-bar">
