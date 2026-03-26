@@ -9,7 +9,6 @@ const PCKeyCodes = {
     SPACE: ' ',
     F_KEY: 'f',
     F_KEY_UPPER: 'F',
-    MENU_KEY: 'Menu',
 };
 
 const TVKeyCodes = {

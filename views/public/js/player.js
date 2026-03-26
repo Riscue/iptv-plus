@@ -924,7 +924,6 @@ class IPTVPlayer {
 
                 case PCKeyCodes.F_KEY:
                 case PCKeyCodes.F_KEY_UPPER:
-                case PCKeyCodes.MENU_KEY:
                     e.preventDefault();
                     self.toggleFullscreen();
                     break;
@@ -938,11 +937,6 @@ class IPTVPlayer {
             if (e.keyCode === TVKeyCodes.BACK) {
                 e.preventDefault();
                 history.back();
-            }
-
-            if (e.keyCode === TVKeyCodes.MENU) {
-                e.preventDefault();
-                self.toggleFullscreen();
             }
 
             if (e.keyCode === TVKeyCodes.DIGIT_0) {
