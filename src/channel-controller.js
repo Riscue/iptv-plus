@@ -272,6 +272,16 @@ class ChannelController {
 
             currentCategory = targetChannel.category;
 
+            if (currentChannel && currentChannel.name === targetChannel.name) {
+                logger.log('CHANNEL', 'Same channel requested, skipping restart');
+                return res.json({
+                    current: currentChannel,
+                    index: channelIndex,
+                    category: currentCategory,
+                    bufferUrl: '/buffer/' + BufferController.getSafeName(currentChannel.name) + '/live.m3u8'
+                });
+            }
+
             await BufferController.changeChannel(targetChannel);
             currentChannel = targetChannel;
 
