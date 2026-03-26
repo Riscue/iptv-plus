@@ -169,7 +169,7 @@ class IPTVPlayer {
                 return this.loadVideo(bufferUrl);
             })
             .catch(() => {
-                this.hideIndicator();
+                this.hideIndicator(IndicatorTypes.LOADING);
                 this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: Messages.CHANNEL_FAILED_TO_LOAD});
             });
     }
@@ -348,7 +348,7 @@ class IPTVPlayer {
             await this.waitForBuffer(data.bufferUrl);
             this.loadVideo(data.bufferUrl);
         } catch (err) {
-            this.hideIndicator();
+            this.hideIndicator(IndicatorTypes.LOADING);
             this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: Messages.COULD_NOT_CHANGE_CHANNEL});
         }
     }
