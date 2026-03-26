@@ -78,7 +78,7 @@ class HomePage {
     }
 
     loadFavorites() {
-        var stored = localStorage.getItem('iptv-favorites');
+        var stored = localStorage.getItem(StorageKeys.FAVORITES);
         if (stored) {
             try {
                 return JSON.parse(stored);
@@ -86,16 +86,16 @@ class HomePage {
                 console.error('Failed to parse favorites:', e);
             }
         }
-        return Array(9).fill(null);
+        return Array(UIConstants.MAX_FAVORITES).fill(null);
     }
 
     saveFavorites() {
-        localStorage.setItem('iptv-favorites', JSON.stringify(this.favorites));
+        localStorage.setItem(StorageKeys.FAVORITES, JSON.stringify(this.favorites));
     }
 
     loadWatchHistory() {
         try {
-            var stored = localStorage.getItem('iptv-watch-history');
+            var stored = localStorage.getItem(StorageKeys.WATCH_HISTORY);
             if (stored) {
                 return JSON.parse(stored);
             }
@@ -105,7 +105,7 @@ class HomePage {
     }
 
     saveWatchHistory() {
-        localStorage.setItem('iptv-watch-history', JSON.stringify(this.watchHistory));
+        localStorage.setItem(StorageKeys.WATCH_HISTORY, JSON.stringify(this.watchHistory));
     }
 
     addToWatchHistory(channel) {
@@ -116,12 +116,12 @@ class HomePage {
         this.watchHistory[channel.name].lastWatched = Date.now();
 
         var keys = Object.keys(this.watchHistory);
-        if (keys.length > 9) {
+        if (keys.length > UIConstants.MAX_WATCH_HISTORY) {
             var self = this;
             var sortedKeys = keys.sort(function (a, b) {
                 return self.watchHistory[b].lastWatched - self.watchHistory[a].lastWatched;
             });
-            for (var i = 9; i < sortedKeys.length; i++) {
+            for (var i = UIConstants.MAX_WATCH_HISTORY; i < sortedKeys.length; i++) {
                 delete this.watchHistory[sortedKeys[i]];
             }
         }
@@ -138,12 +138,12 @@ class HomePage {
             });
             if (existingIndex !== -1) {
                 this.favorites[existingIndex] = null;
-                this.showNotification('Removed from favorites');
+                this.showNotification(Messages.REMOVED_FROM_FAVORITES);
                 this.saveFavorites();
                 this.renderFavorites();
                 return;
             } else {
-                this.showNotification('Favorite slots full!');
+                this.showNotification(Messages.FAVORITE_SLOTS_FULL);
                 return;
             }
         }
@@ -151,7 +151,7 @@ class HomePage {
         this.favorites[emptyIndex] = channel;
         this.saveFavorites();
         this.renderFavorites();
-        this.showNotification('Added to favorites');
+        this.showNotification(Messages.ADDED_TO_FAVORITES);
     }
 
     showNotification(message) {
@@ -201,7 +201,7 @@ class HomePage {
         };
 
         grid.onkeydown = function (e) {
-            if (e.key === 'Enter') {
+            if (e.key === PCKeyCodes.ENTER) {
                 var item = e.target.closest('.favorite-item');
                 if (item && !item.classList.contains('empty')) {
                     var index = parseInt(item.dataset.index);
@@ -238,7 +238,7 @@ class HomePage {
             .sort(function (a, b) {
                 return b.lastWatched - a.lastWatched;
             })
-            .slice(0, 9);
+            .slice(0, UIConstants.MAX_WATCH_HISTORY);
 
         if (this.currentRecording) {
             var existingIndex = sortedChannels.findIndex(function (item) {
@@ -253,11 +253,11 @@ class HomePage {
                 };
             }
             sortedChannels.unshift(recordingItem);
-            sortedChannels = sortedChannels.slice(0, 9);
+            sortedChannels = sortedChannels.slice(0, UIConstants.MAX_WATCH_HISTORY);
         }
 
         if (sortedChannels.length === 0) {
-            grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; padding: 20px;">No channels watched yet</div>';
+            grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; padding: 20px;">' + Messages.NO_CHANNELS_WATCHED + '</div>';
             return;
         }
 
@@ -265,7 +265,7 @@ class HomePage {
             var globalIndex = self.channels.indexOf(item.channel);
             var isRecording = self.currentRecording && item.name === self.currentRecording.name;
             var timeStr = new Date(item.lastWatched).toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'});
-            var recordingBadge = isRecording ? '<div class="recording-badge"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg> Recording</div>' : '<div class="watch-count">' + 'Time: ' + timeStr + '</div>';
+            var recordingBadge = isRecording ? '<div class="recording-badge">' + Messages.RECORDING + '</div>' : '<div class="watch-count">' + Messages.TIME_PREFIX + ' ' + timeStr + '</div>';
             return '<div class="recent-item' + (isRecording ? ' recording' : '') + '" data-index="' + globalIndex + '" data-recording="' + isRecording + '" tabindex="0">' + '<div class="channel-name">' + item.name + '</div>' + recordingBadge + '</div>';
         }).join('');
 
@@ -283,7 +283,7 @@ class HomePage {
         };
 
         grid.onkeydown = function (e) {
-            if (e.key === 'Enter') {
+            if (e.key === PCKeyCodes.ENTER) {
                 var item = e.target.closest('.recent-item');
                 if (item) {
                     var index = parseInt(item.dataset.index);
@@ -317,7 +317,7 @@ class HomePage {
         };
 
         grid.onkeydown = function (e) {
-            if (e.key === 'Enter') {
+            if (e.key === PCKeyCodes.ENTER) {
                 var item = e.target.closest('.category-item');
                 if (item) {
                     var category = item.dataset.category;
@@ -396,7 +396,7 @@ class HomePage {
         };
 
         grid.onkeydown = function (e) {
-            if (e.key === 'Enter') {
+            if (e.key === PCKeyCodes.ENTER) {
                 var item = e.target.closest('.channel-item');
                 if (item) {
                     var index = parseInt(item.dataset.index);
@@ -425,7 +425,7 @@ class HomePage {
             clearTimeout(self.searchTimeout);
             self.searchTimeout = setTimeout(function () {
                 self.performSearch(input.value);
-            }, 300);
+            }, UIConstants.SEARCH_DEBOUNCE);
         });
     }
 
@@ -443,8 +443,8 @@ class HomePage {
         document.getElementById('categories-view').classList.add('hidden');
         document.getElementById('channels-view').classList.remove('hidden');
         document.getElementById('back-nav').classList.remove('hidden');
-        document.getElementById('current-category-name').textContent = 'Search: ' + query;
-        document.getElementById('channels-title').textContent = 'Search Results';
+        document.getElementById('current-category-name').textContent = Messages.SEARCH_PREFIX + ' ' + query;
+        document.getElementById('channels-title').textContent = Messages.SEARCH_RESULTS;
 
         this.renderChannels(filtered.slice(0, 100));
     }
@@ -465,7 +465,7 @@ class HomePage {
                 return;
             }
 
-            if (e.key === 'Escape' || e.key === 'Exit' || e.keyCode === 1001 || e.keyCode === 1009 || e.keyCode === 461) {
+            if (e.key === PCKeyCodes.ESCAPE || e.keyCode === TVKeyCodes.BACK) {
                 if (self.currentCategory) {
                     self.showCategoriesView();
                 } else if (document.activeElement === input) {
@@ -475,7 +475,7 @@ class HomePage {
                 return;
             }
 
-            if ((e.key === 'Enter' || e.key === 'OK') && document.activeElement === input) {
+            if ((e.key === PCKeyCodes.ENTER || e.key === PCKeyCodes.OK) && document.activeElement === input) {
                 e.preventDefault();
                 if (input.value.length >= 2) {
                     var firstChannel = document.querySelector('.channel-item');
@@ -508,7 +508,7 @@ class HomePage {
                     self.favorites[index] = null;
                     self.saveFavorites();
                     self.renderFavorites();
-                    self.showNotification('Removed from favorites');
+                    self.showNotification(Messages.REMOVED_FROM_FAVORITES);
                 } else if (active.classList.contains('recent-item') || active.classList.contains('channel-item') || active.classList.contains('category-item')) {
                     var index = parseInt(active.dataset.index);
                     channel = self.channels[index];
@@ -531,9 +531,9 @@ class HomePage {
                 }
             }
 
-            if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            if (e.key === PCKeyCodes.ARROW_UP || e.key === PCKeyCodes.ARROW_DOWN || e.key === PCKeyCodes.ARROW_LEFT || e.key === PCKeyCodes.ARROW_RIGHT) {
                 if (document.activeElement === input) {
-                    if (e.key === 'ArrowDown') {
+                    if (e.key === PCKeyCodes.ARROW_DOWN) {
                         e.preventDefault();
                         if (input.value.length >= 2) {
                             var firstChannel = document.querySelector('.channel-item');
@@ -596,15 +596,14 @@ class HomePage {
                 var target = idx;
                 var targetGrid = null;
 
-                if (e.key === 'ArrowRight') {
+                if (e.key === PCKeyCodes.ARROW_RIGHT) {
                     if (col < cols - 1 && idx + 1 < items.length) target = idx + 1;
-                } else if (e.key === 'ArrowLeft') {
+                } else if (e.key === PCKeyCodes.ARROW_LEFT) {
                     if (col > 0) target = idx - 1;
-                } else if (e.key === 'ArrowDown') {
+                } else if (e.key === PCKeyCodes.ARROW_DOWN) {
                     target = idx + cols;
                     if (target >= items.length) {
                         if (gridIdx < grids.length - 1) {
-                            // Try next grids, going down until we find items
                             var searchGridIdx = gridIdx + 1;
                             while (searchGridIdx < grids.length) {
                                 targetGrid = grids[searchGridIdx];
@@ -612,7 +611,6 @@ class HomePage {
                                     return !el.classList.contains('empty') && el.offsetParent !== null;
                                 });
                                 if (nextItems.length > 0) {
-                                    // Found items in this grid
                                     if (searchGridIdx === 1) {
                                         target = 0;
                                     } else {
@@ -622,20 +620,18 @@ class HomePage {
                                 }
                                 searchGridIdx++;
                             }
-                            // All next grids empty, stay in place
                             if (searchGridIdx >= grids.length) {
                                 target = idx;
                             }
                         } else target = idx;
                     }
-                } else if (e.key === 'ArrowUp') {
+                } else if (e.key === PCKeyCodes.ARROW_UP) {
                     if (row > 0) {
                         target = idx - cols;
                     } else if (gridIdx === 0) {
                         input.focus();
                         return;
                     } else if (gridIdx > 0) {
-                        // Try previous grids, going up until we find items
                         var searchGridIdx = gridIdx - 1;
                         while (searchGridIdx >= 0) {
                             targetGrid = grids[searchGridIdx];
@@ -643,7 +639,6 @@ class HomePage {
                                 return !el.classList.contains('empty') && el.offsetParent !== null;
                             });
                             if (prevItems.length > 0) {
-                                // Found items in this grid
                                 var pFirstY = prevItems[0].getBoundingClientRect().top;
                                 var pCols = 0;
                                 for (var i = 0; i < prevItems.length; i++) {
@@ -656,7 +651,6 @@ class HomePage {
                             }
                             searchGridIdx--;
                         }
-                        // All grids empty, go to search box
                         if (searchGridIdx < 0) {
                             var searchInput = document.getElementById('search-input');
                             if (searchInput) {
@@ -683,7 +677,7 @@ class HomePage {
                 return;
             }
 
-            if (e.key === 'Enter' || e.key === 'OK') {
+            if (e.key === PCKeyCodes.ENTER || e.key === PCKeyCodes.OK) {
                 if (document.activeElement.tagName !== 'INPUT') {
                     e.preventDefault();
                     document.activeElement.click();
