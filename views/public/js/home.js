@@ -91,9 +91,9 @@ class HomePage {
             var catData = await catRes.json();
             this.categories = catData.categories || [];
 
-            console.log('Loaded ' + this.channels.length + ' channels, ' + this.categories.length + ' categories');
+            console.log('[HOME] Loaded ' + this.channels.length + ' channels, ' + this.categories.length + ' categories');
         } catch (err) {
-            console.error('Failed to load data:', err);
+            console.error('[HOME] Failed to load data:', err);
         }
     }
 
@@ -664,7 +664,7 @@ class HomePage {
     }
 
     resumeChannel(channel) {
-        console.log('Resuming channel:', channel.name, '(keeping recording alive)');
+        console.log('[HOME] Resuming channel:', channel.name, '(keeping recording alive)');
         this.addToWatchHistory(channel);
         window.location.href = '/player';
     }
@@ -676,10 +676,10 @@ class HomePage {
         });
 
         if (index !== -1) {
-            console.log('Playing channel:', channel.name, 'at index:', index);
+            console.log('[HOME] Playing channel:', channel.name, 'at index:', index);
             fetch('/api/channel/change?index=' + index)
                 .then(function (response) {
-                    console.log('Channel change response:', response.status);
+                    console.log('[HOME] Channel change response:', response.status);
                     return response.json();
                 })
                 .then(function () {
@@ -687,10 +687,10 @@ class HomePage {
                     window.location.href = '/player';
                 })
                 .catch(function (err) {
-                    console.error('Failed to change channel:', err);
+                    console.error('[HOME] Failed to change channel:', err);
                 });
         } else {
-            console.error('Channel not found:', channel.name);
+            console.error('[HOME] Channel not found:', channel.name);
         }
     }
 }

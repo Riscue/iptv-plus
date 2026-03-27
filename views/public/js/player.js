@@ -104,7 +104,7 @@ class IPTVPlayer {
             support.push('HLS (Native)');
         }
 
-        console.log('Supported codecs:', support);
+        console.log('[PLAYER] Supported codecs:', support);
 
         if (support.length === 0) {
             this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: Messages.VIDEO_CODEC_NOT_SUPPORTED});
@@ -120,7 +120,7 @@ class IPTVPlayer {
             this.currentChannel = data.current;
             this.currentCategory = data.currentCategory || null;
         } catch (err) {
-            console.error('Failed to load channels:', err);
+            console.error('[PLAYER] Failed to load channels:', err);
         }
     }
 
@@ -322,7 +322,7 @@ class IPTVPlayer {
         try {
             this.watchHistory = ChannelUtils.addToWatchHistory(this.watchHistory, channel.name);
         } catch (e) {
-            console.error('Watch history error:', e);
+            console.error('[PLAYER] Watch history error:', e);
         }
 
         this.updateChannelInfo();
