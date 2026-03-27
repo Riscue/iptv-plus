@@ -55,6 +55,7 @@ class ChannelController {
                 });
             } catch (err) {
                 logger.error('PLAYLIST', 'Download failed:', err.message);
+                playlistDownloadPromise = null;
                 throw err;
             } finally {
                 playlistDownloadPromise = null;
