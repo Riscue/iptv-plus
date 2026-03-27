@@ -1,7 +1,19 @@
 const fs = require('fs');
 const path = require('path');
 const {spawn} = require('child_process');
-const {bufferDir, bufferDurationMinutes, segmentDuration} = require('./constants');
+const {
+    bufferDir,
+    bufferDurationMinutes,
+    segmentDuration,
+    activityTimeout,
+    activityCheckInterval,
+    cleanupInterval: cleanupIntervalMs,
+    gracefulShutdownTimeout,
+    forceKillTimeout,
+    forceRecoveryTimeout,
+    retryBaseDelay,
+    maxRetries: maxRetriesConstant
+} = require('./constants');
 const logger = require('./logger');
 
 let ffmpegProcess = null;
@@ -10,8 +22,6 @@ let cleanupInterval = null;
 let activityInterval = null;
 let lastActivity = Date.now();
 let bufferStartTime = null;
-
-const ACTIVITY_TIMEOUT = 300000;
 
 class BufferController {
 
@@ -31,7 +41,7 @@ class BufferController {
         const m3u8Path = path.join(channelPath, 'live.m3u8');
         const segmentPath = path.join(channelPath, '%08d.ts');
 
-        const ffmpegArgs = ['-user_agent', 'Mozilla/5.0', '-i', channel.url, '-c', 'copy', '-f', 'hls', '-hls_time', '5', '-hls_list_size', '0', '-hls_flags', 'delete_segments+append_list+independent_segments', '-hls_segment_filename', segmentPath, m3u8Path];
+        const ffmpegArgs = ['-user_agent', 'Mozilla/5.0', '-i', channel.url, '-c', 'copy', '-f', 'hls', '-hls_time', String(segmentDuration), '-hls_list_size', '0', '-hls_flags', 'delete_segments+append_list+independent_segments', '-hls_segment_filename', segmentPath, m3u8Path];
 
         logger.log('BUFFER', 'Starting FFmpeg for channel:', channel.name);
         logger.log('BUFFER', 'URL:', channel.url);
@@ -69,7 +79,7 @@ class BufferController {
         return m3u8Path;
     }
 
-    static async startBufferWithRetry(channel, maxRetries = 3) {
+    static async startBufferWithRetry(channel, maxRetries = maxRetriesConstant) {
         let lastError = null;
 
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -81,7 +91,7 @@ class BufferController {
 
                 if (attempt < maxRetries) {
                     await BufferController.stopBuffer();
-                    const delay = Math.pow(2, attempt - 1) * 1000;
+                    const delay = Math.pow(2, attempt - 1) * retryBaseDelay;
                     logger.log('BUFFER', `Retrying in ${delay}ms...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                 }
@@ -123,7 +133,7 @@ class BufferController {
         logger.log('BUFFER', 'Recording stopped');
     }
 
-    static async gracefulShutdown(childProcess, timeoutMs = 2000) {
+    static async gracefulShutdown(childProcess, timeoutMs = gracefulShutdownTimeout) {
         if (!childProcess) return;
 
         return new Promise((resolve) => {
@@ -153,7 +163,7 @@ class BufferController {
                             resolved = true;
                             resolve();
                         }
-                    }, 500);
+                    }, forceKillTimeout);
                 }
             }, timeoutMs);
         });
@@ -164,7 +174,7 @@ class BufferController {
 
         if (ffmpegProcess) {
             try {
-                await BufferController.gracefulShutdown(ffmpegProcess, 1000);
+                await BufferController.gracefulShutdown(ffmpegProcess, forceRecoveryTimeout);
             } catch (err) {
                 logger.error('BUFFER', 'Error during force recovery:', err.message);
             }
@@ -223,12 +233,12 @@ class BufferController {
         if (cleanupInterval) clearInterval(cleanupInterval);
         cleanupInterval = setInterval(() => {
             BufferController.cleanupOldSegments();
-        }, 5 * 60 * 1000);
+        }, cleanupIntervalMs);
 
         BufferController.cleanupOldSegments();
 
         if (activityInterval) clearInterval(activityInterval);
-        activityInterval = setInterval(BufferController.checkActivity, 30000);
+        activityInterval = setInterval(BufferController.checkActivity, activityCheckInterval);
     }
 
     static updateActivity() {
@@ -239,7 +249,7 @@ class BufferController {
         if (!ffmpegProcess) return;
 
         const inactiveTime = Date.now() - lastActivity;
-        if (inactiveTime > ACTIVITY_TIMEOUT) {
+        if (inactiveTime > activityTimeout) {
             const inactiveMinutes = Math.floor(inactiveTime / 60000);
             logger.log('BUFFER', 'No activity for ' + inactiveMinutes + ' minutes, stopping recording');
             await BufferController.stopBuffer();

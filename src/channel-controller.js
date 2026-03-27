@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const M3U8FileParser = require('m3u8-file-parser');
-const {playlistUrl, playlistFile} = require('./constants');
+const {playlistUrl, playlistFile, playlistCacheDuration} = require('./constants');
 const BufferController = require('./buffer-controller');
 const logger = require('./logger');
 
@@ -22,7 +22,7 @@ class ChannelController {
             const age = Date.now() - stats.mtimeMs;
             const ageHours = Math.floor(age / (60 * 60 * 1000));
 
-            if (age < 24 * 60 * 60 * 1000) {
+            if (age < playlistCacheDuration) {
                 logger.log('PLAYLIST', 'Using cached playlist (' + ageHours + 'h old)');
                 return;
             }
