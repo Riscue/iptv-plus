@@ -252,7 +252,7 @@ class HomePage {
         grid.innerHTML = sortedChannels.map(function (item) {
             var globalIndex = self.channels.indexOf(item.channel);
             var isRecording = self.currentRecording && item.name === self.currentRecording.name;
-            var timeStr = new Date(item.lastWatched).toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'});
+            var timeStr = new Date(item.lastWatched).toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'});
             var recordingBadge = isRecording ? '<div class="recording-badge">' + Messages.RECORDING + '</div>' : '<div class="watch-count">' + Messages.TIME_PREFIX + ' ' + timeStr + '</div>';
             return '<div class="recent-item' + (isRecording ? ' recording' : '') + '" data-index="' + globalIndex + '" data-recording="' + isRecording + '" tabindex="0">' + '<div class="channel-name">' + ChannelUtils.escapeHtml(item.name) + '</div>' + recordingBadge + '</div>';
         }).join('');

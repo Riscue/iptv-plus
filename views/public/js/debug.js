@@ -44,7 +44,7 @@
     function renderBuildInfo() {
         if (!els.debugBuildInfo || !buildInfo) return;
 
-        var buildTime = buildInfo.buildDate ? new Date(buildInfo.buildDate).toLocaleString('tr-TR', {
+        var buildTime = buildInfo.buildDate ? new Date(buildInfo.buildDate).toLocaleString('en-US', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',

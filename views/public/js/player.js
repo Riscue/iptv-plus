@@ -399,10 +399,10 @@ class IPTVPlayer {
     getRealTime(videoTimeSeconds) {
         if (this.bufferStartTime && !isNaN(videoTimeSeconds)) {
             var videoTime = new Date(this.bufferStartTime + (videoTimeSeconds * 1000));
-            return videoTime.toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+            return videoTime.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
         } else {
             var now = new Date();
-            return now.toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+            return now.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
         }
     }
 
@@ -1201,7 +1201,7 @@ class IPTVPlayer {
         container.innerHTML = sorted.map(function (item) {
             var globalIdx = channels.indexOf(item.channel);
             var isActive = globalIdx === self.channelIndex;
-            var timeStr = new Date(item.lastWatched).toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'});
+            var timeStr = new Date(item.lastWatched).toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'});
             return '<div class="recent-list-item' + (isActive ? ' active' : '') + '" data-index="' + globalIdx + '" tabindex="0">' +
                 '<span class="recent-name">' + ChannelUtils.escapeHtml(item.name) + '</span>' +
                 '<span class="recent-time">' + Messages.TIME_PREFIX + ' ' + timeStr + '</span>' +
