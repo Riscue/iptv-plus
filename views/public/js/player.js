@@ -21,6 +21,7 @@ class IPTVPlayer {
         this.watchHistory = ChannelUtils.loadWatchHistory();
         this.selectedCategory = null;
 
+        this.programmaticBack = false;
         this.indicatorPriority = IndicatorPriority;
 
         this.timeDisplayInterval = null;
@@ -86,6 +87,11 @@ class IPTVPlayer {
         this.loadVideoFromBuffer();
     }
 
+    goBack() {
+        this.programmaticBack = true;
+        history.back();
+    }
+
     checkCodecSupport() {
         var video = this.els.video;
         var support = [];
@@ -108,7 +114,7 @@ class IPTVPlayer {
 
         if (support.length === 0) {
             this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: Messages.VIDEO_CODEC_NOT_SUPPORTED});
-            setTimeout(() => history.back(), 2000);
+            setTimeout(() => this.goBack(), 2000);
         }
     }
 
@@ -196,7 +202,7 @@ class IPTVPlayer {
             .catch(() => {
                 this.hideIndicator(IndicatorTypes.LOADING);
                 this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: Messages.CHANNEL_FAILED_TO_LOAD});
-                setTimeout(() => history.back(), 2000);
+                setTimeout(() => this.goBack(), 2000);
             });
     }
 
@@ -284,14 +290,14 @@ class IPTVPlayer {
                 case Hls.ErrorTypes.NETWORK_ERROR:
                     console.error('[HLS] Network error:', details);
                     this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: Messages.CONNECTION_LOST});
-                    setTimeout(() => history.back(), 2000);
+                    setTimeout(() => this.goBack(), 2000);
                     break;
 
                 case Hls.ErrorTypes.MEDIA_ERROR:
                     console.error('[HLS] Media error:', details);
                     if (details === HLSErrorDetails.BUFFER_DECODING_ERROR || details === HLSErrorDetails.BUFFER_CODEC_ERROR || details === HLSErrorDetails.MANIFEST_INCOMPATIBLE_CODECS_ERROR) {
                         this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: Messages.CODEC_NOT_SUPPORTED_TV});
-                        setTimeout(() => history.back(), 2000);
+                        setTimeout(() => this.goBack(), 2000);
                     } else {
                         this.showIndicator(IndicatorTypes.ERROR, {message: Messages.PLAYBACK_ERROR_RECOVERING});
                         this.hls.recoverMediaError();
@@ -301,7 +307,7 @@ class IPTVPlayer {
                 default:
                     console.error('[HLS] Fatal error:', details);
                     this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: Messages.PLAYBACK_ERROR_CHANGE_CHANNEL});
-                    setTimeout(() => history.back(), 2000);
+                    setTimeout(() => this.goBack(), 2000);
                     break;
             }
         });
@@ -357,7 +363,7 @@ class IPTVPlayer {
         } catch (err) {
             this.hideIndicator(IndicatorTypes.LOADING);
             this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: Messages.COULD_NOT_CHANGE_CHANNEL});
-            setTimeout(() => history.back(), 2000);
+            setTimeout(() => this.goBack(), 2000);
         }
     }
 
@@ -600,8 +606,12 @@ class IPTVPlayer {
 
     setupTvBackButton() {
         var self = this;
-        history.pushState(null, null, location.pathname);
         window.addEventListener('popstate', function () {
+            if (self.programmaticBack) {
+                self.programmaticBack = false;
+                return;
+            }
+
             if (self.channelListVisible) {
                 history.pushState(null, null, location.pathname);
                 self.toggleChannelList(false);
@@ -614,7 +624,7 @@ class IPTVPlayer {
                     document.activeElement.blur();
                 }
             } else {
-                history.back();
+                self.goBack();
             }
         });
     }
@@ -905,7 +915,7 @@ class IPTVPlayer {
             case PCKeyCodes.ESCAPE:
                 e.preventDefault();
                 if (document.body.classList.contains('idle')) {
-                    history.back();
+                    this.goBack();
                 } else {
                     this.forceIdle = true;
                     clearTimeout(this.idleTimer);
@@ -941,7 +951,7 @@ class IPTVPlayer {
                     document.activeElement.blur();
                 }
             } else {
-                history.back();
+                this.goBack();
             }
         }
 
@@ -1048,7 +1058,7 @@ class IPTVPlayer {
 
         this.bindClick('btn-back', function (e) {
             e.preventDefault();
-            history.back();
+            self.goBack();
         });
     }
 

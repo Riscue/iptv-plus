@@ -84,7 +84,6 @@ class HomePage {
 
     setupTvBackButton() {
         var self = this;
-        history.pushState(null, null, location.pathname);
         window.addEventListener('popstate', function () {
             if (self.currentCategory) {
                 history.pushState(null, null, location.pathname);
@@ -98,7 +97,6 @@ class HomePage {
                 history.pushState(null, null, location.pathname);
                 self.els.searchInput.value = '';
                 self.els.searchInput.blur();
-                self.showCategoriesView();
             }
         });
     }
