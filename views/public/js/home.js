@@ -38,6 +38,7 @@ class HomePage {
         this.setupNavigation();
         this.setupPageShowHandler();
         this.setupFullscreenFocusRestore();
+        this.setupTvBackButton();
         this.renderFavorites();
         this.renderRecent();
         this.renderCategories();
@@ -79,6 +80,27 @@ class HomePage {
 
     setupFullscreenFocusRestore() {
         ChannelUtils.setupFullscreenFocusRestore();
+    }
+
+    setupTvBackButton() {
+        var self = this;
+        history.pushState(null, null, location.pathname);
+        window.addEventListener('popstate', function () {
+            if (self.currentCategory) {
+                history.pushState(null, null, location.pathname);
+                self.showCategoriesView();
+            } else if (!self.els.channelsView.classList.contains('hidden')) {
+                history.pushState(null, null, location.pathname);
+                self.els.searchInput.value = '';
+                self.els.searchInput.blur();
+                self.showCategoriesView();
+            } else if (document.activeElement === self.els.searchInput) {
+                history.pushState(null, null, location.pathname);
+                self.els.searchInput.value = '';
+                self.els.searchInput.blur();
+                self.showCategoriesView();
+            }
+        });
     }
 
     async loadData() {
@@ -449,6 +471,10 @@ class HomePage {
     handleBackKey(e) {
         if (e.keyCode !== PCKeyCodes.ESCAPE && e.keyCode !== TVKeyCodes.BACK) return false;
         if (this.currentCategory) {
+            this.showCategoriesView();
+        } else if (!this.els.channelsView.classList.contains('hidden')) {
+            this.els.searchInput.value = '';
+            this.els.searchInput.blur();
             this.showCategoriesView();
         } else if (document.activeElement === this.els.searchInput) {
             this.els.searchInput.value = '';

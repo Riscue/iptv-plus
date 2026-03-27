@@ -133,6 +133,7 @@ class IPTVPlayer {
         this.setupHeartbeat();
         this.setupVideoListeners();
         this.setupFullscreenFocusRestore();
+        this.setupTvBackButton();
     }
 
     setupVideoListeners() {
@@ -597,6 +598,27 @@ class IPTVPlayer {
         ChannelUtils.setupFullscreenFocusRestore();
     }
 
+    setupTvBackButton() {
+        var self = this;
+        history.pushState(null, null, location.pathname);
+        window.addEventListener('popstate', function () {
+            if (self.channelListVisible) {
+                history.pushState(null, null, location.pathname);
+                self.toggleChannelList(false);
+            } else if (!document.body.classList.contains('idle')) {
+                history.pushState(null, null, location.pathname);
+                self.forceIdle = true;
+                clearTimeout(self.idleTimer);
+                document.body.classList.add('idle');
+                if (document.activeElement && document.activeElement !== document.body) {
+                    document.activeElement.blur();
+                }
+            } else {
+                history.back();
+            }
+        });
+    }
+
     updateChannelInfo() {
         if (this.currentChannel && this.els.channelName && this.els.channelNumber) {
             this.els.channelName.textContent = this.currentChannel.name;
@@ -634,6 +656,7 @@ class IPTVPlayer {
         this.forceIdle = false;
 
         var resetIdle = function (e) {
+            if (e && e.keyCode && (e.keyCode === PCKeyCodes.ESCAPE || e.keyCode === TVKeyCodes.BACK)) return;
             if (e && (e.type === 'mousemove' || e.type === 'click' || e.type === 'touchstart')) {
                 self.forceIdle = false;
             }
@@ -799,7 +822,9 @@ class IPTVPlayer {
                 this.seekForward();
                 return true;
         }
-        document.body.classList.remove('idle');
+
+        if (e.keyCode !== PCKeyCodes.ESCAPE && e.keyCode !== TVKeyCodes.BACK)
+            document.body.classList.remove('idle');
         return false;
     }
 
@@ -879,7 +904,16 @@ class IPTVPlayer {
 
             case PCKeyCodes.ESCAPE:
                 e.preventDefault();
-                history.back();
+                if (document.body.classList.contains('idle')) {
+                    history.back();
+                } else {
+                    this.forceIdle = true;
+                    clearTimeout(this.idleTimer);
+                    document.body.classList.add('idle');
+                    if (document.activeElement && document.activeElement !== document.body) {
+                        document.activeElement.blur();
+                    }
+                }
                 break;
 
             case PCKeyCodes.F_KEY:
@@ -899,6 +933,13 @@ class IPTVPlayer {
             e.preventDefault();
             if (this.channelListVisible) {
                 this.toggleChannelList(false);
+            } else if (!document.body.classList.contains('idle')) {
+                this.forceIdle = true;
+                clearTimeout(this.idleTimer);
+                document.body.classList.add('idle');
+                if (document.activeElement && document.activeElement !== document.body) {
+                    document.activeElement.blur();
+                }
             } else {
                 history.back();
             }
