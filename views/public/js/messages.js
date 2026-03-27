@@ -9,8 +9,8 @@ const Icons = {
 };
 
 const Messages = {
-    LOADING: '⏳ Loading...',
-    WAITING: '⏳ Waiting...',
+    LOADING: 'Loading...',
+    WAITING: 'Waiting...',
 
     VIDEO_CODEC_NOT_SUPPORTED: 'Video codec not supported!',
     CHANNEL_FAILED_TO_LOAD: 'Channel failed to load',
