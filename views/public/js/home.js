@@ -47,15 +47,7 @@ class HomePage {
     }
 
     setupFullscreenFocusRestore() {
-        var handler = function () {
-            setTimeout(function () {
-                document.body.focus();
-            }, 100);
-        };
-        document.addEventListener('fullscreenchange', handler);
-        document.addEventListener('webkitfullscreenchange', handler);
-        document.addEventListener('mozfullscreenchange', handler);
-        document.addEventListener('MSFullscreenChange', handler);
+        ChannelUtils.setupFullscreenFocusRestore();
     }
 
     async loadData() {
@@ -91,24 +83,7 @@ class HomePage {
     }
 
     addToWatchHistory(channel) {
-        if (!this.watchHistory[channel.name]) {
-            this.watchHistory[channel.name] = {count: 0, lastWatched: Date.now()};
-        }
-        this.watchHistory[channel.name].count++;
-        this.watchHistory[channel.name].lastWatched = Date.now();
-
-        var keys = Object.keys(this.watchHistory);
-        if (keys.length > UIConstants.MAX_WATCH_HISTORY) {
-            var self = this;
-            var sortedKeys = keys.sort(function (a, b) {
-                return self.watchHistory[b].lastWatched - self.watchHistory[a].lastWatched;
-            });
-            for (var i = UIConstants.MAX_WATCH_HISTORY; i < sortedKeys.length; i++) {
-                delete this.watchHistory[sortedKeys[i]];
-            }
-        }
-
-        ChannelUtils.saveWatchHistory(this.watchHistory);
+        this.watchHistory = ChannelUtils.addToWatchHistory(this.watchHistory, channel.name);
         this.renderRecent();
     }
 
@@ -433,239 +408,234 @@ class HomePage {
 
     setupKeyboardEvents() {
         var self = this;
+        document.addEventListener('keydown', function (e) {
+            if (self.handleDigitKey(e)) return;
+            if (self.handleBackKey(e)) return;
+            if (self.handleSearchEnter(e)) return;
+            if (self.handleColorKeys(e)) return;
+            if (self.handleLetterToSearch(e)) return;
+            if (self.handleArrowKeys(e)) return;
+            if (self.handleEnterKey(e)) return;
+        });
+    }
+
+    handleDigitKey(e) {
+        if (e.key < '1' || e.key > '9') return false;
+        var idx = parseInt(e.key) - 1;
+        var input = document.getElementById('search-input');
+        if (this.favorites[idx] && !(document.activeElement === input && input.value.length > 0)) {
+            e.preventDefault();
+            this.playChannel(this.favorites[idx]);
+        }
+        return true;
+    }
+
+    handleBackKey(e) {
+        if (e.key !== PCKeyCodes.ESCAPE && e.keyCode !== TVKeyCodes.BACK) return false;
+        var input = document.getElementById('search-input');
+        if (this.currentCategory) {
+            this.showCategoriesView();
+        } else if (document.activeElement === input) {
+            input.value = '';
+            input.blur();
+        }
+        return true;
+    }
+
+    handleSearchEnter(e) {
+        if (e.key !== PCKeyCodes.ENTER && e.key !== PCKeyCodes.OK) return false;
+        var input = document.getElementById('search-input');
+        if (document.activeElement !== input) return false;
+        e.preventDefault();
+        if (input.value.length >= 2) {
+            var firstChannel = document.querySelector('.channel-item');
+            if (firstChannel) {
+                firstChannel.focus();
+                firstChannel.scrollIntoView({behavior: 'smooth', block: 'center'});
+            }
+        } else {
+            input.blur();
+        }
+        return true;
+    }
+
+    handleColorKeys(e) {
+        if (e.keyCode === 404) {
+            e.preventDefault();
+            var recordingEl = document.querySelector('.recent-item.recording');
+            if (recordingEl) recordingEl.click();
+            return true;
+        }
+
+        if (e.keyCode === 403 || e.keyCode === 405) {
+            e.preventDefault();
+            var active = document.activeElement;
+            if (active.classList.contains('favorite-item') && !active.classList.contains('empty')) {
+                var index = parseInt(active.dataset.index);
+                this.favorites[index] = null;
+                ChannelUtils.saveFavorites(this.favorites);
+                this.renderFavorites();
+                this.showNotification(Messages.REMOVED_FROM_FAVORITES);
+            } else if (active.classList.contains('recent-item') || active.classList.contains('channel-item')) {
+                var index = parseInt(active.dataset.index);
+                var channel = this.channels[index];
+                if (channel) this.addToFavorites(channel);
+            }
+            if (active) active.focus();
+            return true;
+        }
+
+        return false;
+    }
+
+    handleLetterToSearch(e) {
+        if (document.activeElement === document.getElementById('search-input')) return false;
+        if (e.key.length !== 1 || e.ctrlKey || e.metaKey) return false;
+        var code = e.key.charCodeAt(0);
+        if ((code >= 65 && code <= 90) || (code >= 97 && code <= 122)) {
+            document.getElementById('search-input').focus();
+            return true;
+        }
+        return false;
+    }
+
+    getVisibleGrids() {
+        return ['#favorites-grid', '#recent-grid', '#categories-grid', '#channels-grid']
+            .map(function (id) { return document.querySelector(id); })
+            .filter(function (g) { return g && g.offsetParent !== null; });
+    }
+
+    getGridItems(grid) {
+        return Array.from(grid.children).filter(function (el) {
+            return !el.classList.contains('empty') && el.offsetParent !== null;
+        });
+    }
+
+    getGridColumnCount(items) {
+        var firstY = items[0].getBoundingClientRect().top;
+        var cols = 0;
+        for (var i = 0; i < items.length; i++) {
+            if (Math.abs(items[i].getBoundingClientRect().top - firstY) < 10) cols++;
+            else break;
+        }
+        return cols || 3;
+    }
+
+    handleArrowKeys(e) {
+        var arrowKeys = [PCKeyCodes.ARROW_UP, PCKeyCodes.ARROW_DOWN, PCKeyCodes.ARROW_LEFT, PCKeyCodes.ARROW_RIGHT];
+        if (arrowKeys.indexOf(e.key) === -1) return false;
+
         var input = document.getElementById('search-input');
 
-        document.addEventListener('keydown', function (e) {
-            if (e.key >= '1' && e.key <= '9') {
-                var idx = parseInt(e.key) - 1;
-                if (self.favorites[idx]) {
-                    if (!(document.activeElement === input && input.value.length > 0)) {
-                        e.preventDefault();
-                        self.playChannel(self.favorites[idx]);
-                    }
-                }
-                return;
-            }
-
-            if (e.key === PCKeyCodes.ESCAPE || e.keyCode === TVKeyCodes.BACK) {
-                if (self.currentCategory) {
-                    self.showCategoriesView();
-                } else if (document.activeElement === input) {
-                    input.value = '';
-                    input.blur();
-                }
-                return;
-            }
-
-            if ((e.key === PCKeyCodes.ENTER || e.key === PCKeyCodes.OK) && document.activeElement === input) {
+        if (document.activeElement === input) {
+            if (e.key === PCKeyCodes.ARROW_DOWN) {
                 e.preventDefault();
-                if (input.value.length >= 2) {
-                    var firstChannel = document.querySelector('.channel-item');
-                    if (firstChannel) {
-                        firstChannel.focus();
-                        firstChannel.scrollIntoView({behavior: 'smooth', block: 'center'});
-                    }
-                } else {
-                    input.blur();
-                }
-                return;
-            }
-
-            if (e.keyCode === 404) {
-                e.preventDefault();
-                var recordingEl = document.querySelector('.recent-item.recording');
-                if (recordingEl) {
-                    recordingEl.click();
-                }
-                return;
-            }
-
-            if (e.keyCode === 403 || e.keyCode === 405) {
-                e.preventDefault();
-                var active = document.activeElement;
-                var channel = null;
-
-                if (active.classList.contains('favorite-item') && !active.classList.contains('empty')) {
-                    var index = parseInt(active.dataset.index);
-                    self.favorites[index] = null;
-                    ChannelUtils.saveFavorites(this.favorites);
-                    self.renderFavorites();
-                    self.showNotification(Messages.REMOVED_FROM_FAVORITES);
-                } else if (active.classList.contains('recent-item') || active.classList.contains('channel-item')) {
-                    var index = parseInt(active.dataset.index);
-                    channel = self.channels[index];
-                    if (channel) {
-                        self.addToFavorites(channel);
-                    }
-                }
-
-                if (active) {
-                    active.focus();
-                }
-                return;
-            }
-
-            if (document.activeElement !== input && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
-                var code = e.key.charCodeAt(0);
-                if ((code >= 65 && code <= 90) || (code >= 97 && code <= 122)) {
-                    input.focus();
-                    return;
+                var target = input.value.length >= 2
+                    ? document.querySelector('.channel-item')
+                    : document.querySelector('.favorite-item:not(.empty)');
+                if (target) {
+                    target.focus();
+                    target.scrollIntoView({behavior: 'smooth', block: 'center'});
                 }
             }
+            return true;
+        }
 
-            if (e.key === PCKeyCodes.ARROW_UP || e.key === PCKeyCodes.ARROW_DOWN || e.key === PCKeyCodes.ARROW_LEFT || e.key === PCKeyCodes.ARROW_RIGHT) {
-                if (document.activeElement === input) {
-                    if (e.key === PCKeyCodes.ARROW_DOWN) {
-                        e.preventDefault();
-                        if (input.value.length >= 2) {
-                            var firstChannel = document.querySelector('.channel-item');
-                            if (firstChannel) {
-                                firstChannel.focus();
-                                firstChannel.scrollIntoView({behavior: 'smooth', block: 'center'});
-                            }
-                        } else {
-                            var firstFavorite = document.querySelector('.favorite-item:not(.empty)');
-                            if (firstFavorite) {
-                                firstFavorite.focus();
-                                firstFavorite.scrollIntoView({behavior: 'smooth', block: 'center'});
-                            }
-                        }
-                    }
-                    return;
-                }
+        e.preventDefault();
+        var current = document.activeElement;
+        var itemSelector = '.favorite-item:not(.empty), .recent-item, .category-item, .channel-item';
 
-                e.preventDefault();
-                var current = document.activeElement;
-
-                if (current.tagName === 'BODY' || !current.matches('.favorite-item:not(.empty), .recent-item, .category-item, .channel-item')) {
-                    var firstItem = document.querySelector('.favorite-item:not(.empty), .recent-item, .category-item, .channel-item');
-                    if (firstItem) {
-                        firstItem.focus();
-                        firstItem.scrollIntoView({behavior: 'smooth', block: 'center'});
-                    }
-                    return;
-                }
-
-                var grids = ['#favorites-grid', '#recent-grid', '#categories-grid', '#channels-grid']
-                    .map(function (id) {
-                        return document.querySelector(id);
-                    })
-                    .filter(function (g) {
-                        return g && g.offsetParent !== null;
-                    });
-
-                var grid = current.closest('#favorites-grid, #recent-grid, #categories-grid, #channels-grid');
-                if (!grid) return;
-
-                var gridIdx = grids.indexOf(grid);
-                if (gridIdx === -1) return;
-
-                var items = Array.from(grid.children).filter(function (el) {
-                    return !el.classList.contains('empty') && el.offsetParent !== null;
-                });
-                var idx = items.indexOf(current);
-                if (idx === -1) return;
-
-                var firstY = items[0].getBoundingClientRect().top;
-                var cols = 0;
-                for (var i = 0; i < items.length; i++) {
-                    if (Math.abs(items[i].getBoundingClientRect().top - firstY) < 10) cols++; else break;
-                }
-                if (cols === 0) cols = 3;
-
-                var row = Math.floor(idx / cols);
-                var col = idx % cols;
-                var target = idx;
-                var targetGrid = null;
-
-                if (e.key === PCKeyCodes.ARROW_RIGHT) {
-                    if (col < cols - 1 && idx + 1 < items.length) target = idx + 1;
-                } else if (e.key === PCKeyCodes.ARROW_LEFT) {
-                    if (col > 0) target = idx - 1;
-                } else if (e.key === PCKeyCodes.ARROW_DOWN) {
-                    target = idx + cols;
-                    if (target >= items.length) {
-                        if (gridIdx < grids.length - 1) {
-                            var searchGridIdx = gridIdx + 1;
-                            while (searchGridIdx < grids.length) {
-                                targetGrid = grids[searchGridIdx];
-                                var nextItems = Array.from(targetGrid.children).filter(function (el) {
-                                    return !el.classList.contains('empty') && el.offsetParent !== null;
-                                });
-                                if (nextItems.length > 0) {
-                                    if (searchGridIdx === 1) {
-                                        target = 0;
-                                    } else {
-                                        target = Math.min(col, nextItems.length - 1);
-                                    }
-                                    break;
-                                }
-                                searchGridIdx++;
-                            }
-                            if (searchGridIdx >= grids.length) {
-                                target = idx;
-                            }
-                        } else target = idx;
-                    }
-                } else if (e.key === PCKeyCodes.ARROW_UP) {
-                    if (row > 0) {
-                        target = idx - cols;
-                    } else if (gridIdx === 0) {
-                        input.focus();
-                        return;
-                    } else if (gridIdx > 0) {
-                        var searchGridIdx = gridIdx - 1;
-                        while (searchGridIdx >= 0) {
-                            targetGrid = grids[searchGridIdx];
-                            var prevItems = Array.from(targetGrid.children).filter(function (el) {
-                                return !el.classList.contains('empty') && el.offsetParent !== null;
-                            });
-                            if (prevItems.length > 0) {
-                                var pFirstY = prevItems[0].getBoundingClientRect().top;
-                                var pCols = 0;
-                                for (var i = 0; i < prevItems.length; i++) {
-                                    if (Math.abs(prevItems[i].getBoundingClientRect().top - pFirstY) < 10) pCols++; else break;
-                                }
-                                var pRows = Math.ceil(prevItems.length / pCols);
-                                var pRowStart = (pRows - 1) * pCols;
-                                target = Math.min(pRowStart + col, prevItems.length - 1);
-                                break;
-                            }
-                            searchGridIdx--;
-                        }
-                        if (searchGridIdx < 0) {
-                            var searchInput = document.getElementById('search-input');
-                            if (searchInput) {
-                                searchInput.focus();
-                                return;
-                            }
-                            target = idx;
-                        }
-                    }
-                }
-
-                if (targetGrid) {
-                    var tItems = Array.from(targetGrid.children).filter(function (el) {
-                        return !el.classList.contains('empty') && el.offsetParent !== null;
-                    });
-                    if (target >= 0 && target < tItems.length) {
-                        tItems[target].focus();
-                        tItems[target].scrollIntoView({behavior: 'smooth', block: 'center'});
-                    }
-                } else if (target !== idx && target >= 0 && target < items.length) {
-                    items[target].focus();
-                    items[target].scrollIntoView({behavior: 'smooth', block: 'nearest'});
-                }
-                return;
+        if (current.tagName === 'BODY' || !current.matches(itemSelector)) {
+            var firstItem = document.querySelector(itemSelector);
+            if (firstItem) {
+                firstItem.focus();
+                firstItem.scrollIntoView({behavior: 'smooth', block: 'center'});
             }
+            return true;
+        }
 
-            if (e.key === PCKeyCodes.ENTER || e.key === PCKeyCodes.OK) {
-                if (document.activeElement.tagName !== 'INPUT') {
-                    e.preventDefault();
-                    document.activeElement.click();
+        var grids = this.getVisibleGrids();
+        var grid = current.closest('#favorites-grid, #recent-grid, #categories-grid, #channels-grid');
+        if (!grid) return true;
+
+        var gridIdx = grids.indexOf(grid);
+        if (gridIdx === -1) return true;
+
+        var items = this.getGridItems(grid);
+        var idx = items.indexOf(current);
+        if (idx === -1) return true;
+
+        var cols = this.getGridColumnCount(items);
+        var row = Math.floor(idx / cols);
+        var col = idx % cols;
+        var target = idx;
+        var targetGrid = null;
+
+        if (e.key === PCKeyCodes.ARROW_RIGHT) {
+            if (col < cols - 1 && idx + 1 < items.length) target = idx + 1;
+        } else if (e.key === PCKeyCodes.ARROW_LEFT) {
+            if (col > 0) target = idx - 1;
+        } else if (e.key === PCKeyCodes.ARROW_DOWN) {
+            target = idx + cols;
+            if (target >= items.length && gridIdx < grids.length - 1) {
+                var gi;
+                for (gi = gridIdx + 1; gi < grids.length; gi++) {
+                    targetGrid = grids[gi];
+                    var nextItems = this.getGridItems(targetGrid);
+                    if (nextItems.length > 0) {
+                        target = gi === 1 ? 0 : Math.min(col, nextItems.length - 1);
+                        break;
+                    }
+                }
+                if (gi >= grids.length) target = idx;
+            } else if (target >= items.length) {
+                target = idx;
+            }
+        } else if (e.key === PCKeyCodes.ARROW_UP) {
+            if (row > 0) {
+                target = idx - cols;
+            } else if (gridIdx === 0) {
+                input.focus();
+                return true;
+            } else if (gridIdx > 0) {
+                var gi;
+                for (gi = gridIdx - 1; gi >= 0; gi--) {
+                    targetGrid = grids[gi];
+                    var prevItems = this.getGridItems(targetGrid);
+                    if (prevItems.length > 0) {
+                        var pCols = this.getGridColumnCount(prevItems);
+                        var pRows = Math.ceil(prevItems.length / pCols);
+                        target = Math.min((pRows - 1) * pCols + col, prevItems.length - 1);
+                        break;
+                    }
+                }
+                if (gi < 0) {
+                    var searchInput = document.getElementById('search-input');
+                    if (searchInput) { searchInput.focus(); return true; }
+                    target = idx;
                 }
             }
-        });
+        }
+
+        if (targetGrid) {
+            var tItems = this.getGridItems(targetGrid);
+            if (target >= 0 && target < tItems.length) {
+                tItems[target].focus();
+                tItems[target].scrollIntoView({behavior: 'smooth', block: 'center'});
+            }
+        } else if (target !== idx && target >= 0 && target < items.length) {
+            items[target].focus();
+            items[target].scrollIntoView({behavior: 'smooth', block: 'nearest'});
+        }
+        return true;
+    }
+
+    handleEnterKey(e) {
+        if (e.key !== PCKeyCodes.ENTER && e.key !== PCKeyCodes.OK) return false;
+        if (document.activeElement.tagName === 'INPUT') return false;
+        e.preventDefault();
+        document.activeElement.click();
+        return true;
     }
 
     resumeChannel(channel) {

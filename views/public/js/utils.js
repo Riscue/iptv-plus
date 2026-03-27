@@ -9,6 +9,10 @@ var ChannelUtils = {
             .replace(/'/g, '&#039;');
     },
 
+    getSafeName: function (name) {
+        return name.replace(/[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_-]/g, '_');
+    },
+
     loadFavorites: function () {
         try {
             var stored = localStorage.getItem(StorageKeys.FAVORITES);
@@ -33,5 +37,38 @@ var ChannelUtils = {
 
     saveWatchHistory: function (watchHistory) {
         localStorage.setItem(StorageKeys.WATCH_HISTORY, JSON.stringify(watchHistory));
+    },
+
+    addToWatchHistory: function (watchHistory, channelName) {
+        if (!watchHistory[channelName]) {
+            watchHistory[channelName] = {count: 0, lastWatched: Date.now()};
+        }
+        watchHistory[channelName].count++;
+        watchHistory[channelName].lastWatched = Date.now();
+
+        var keys = Object.keys(watchHistory);
+        if (keys.length > UIConstants.MAX_WATCH_HISTORY) {
+            var sortedKeys = keys.sort(function (a, b) {
+                return watchHistory[b].lastWatched - watchHistory[a].lastWatched;
+            });
+            for (var i = UIConstants.MAX_WATCH_HISTORY; i < sortedKeys.length; i++) {
+                delete watchHistory[sortedKeys[i]];
+            }
+        }
+
+        ChannelUtils.saveWatchHistory(watchHistory);
+        return watchHistory;
+    },
+
+    setupFullscreenFocusRestore: function () {
+        var handler = function () {
+            setTimeout(function () {
+                document.body.focus();
+            }, 100);
+        };
+        document.addEventListener('fullscreenchange', handler);
+        document.addEventListener('webkitfullscreenchange', handler);
+        document.addEventListener('mozfullscreenchange', handler);
+        document.addEventListener('MSFullscreenChange', handler);
     }
 };

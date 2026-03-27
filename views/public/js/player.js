@@ -28,6 +28,21 @@ class IPTVPlayer {
 
         this.indicatorPriority = IndicatorPriority;
 
+        this.els = {
+            overlay: document.getElementById('video-overlay'),
+            channelName: document.getElementById('channel-name'),
+            channelNumber: document.getElementById('channel-number'),
+            currentTime: document.getElementById('current-time'),
+            totalTime: document.getElementById('total-time'),
+            btnLive: document.getElementById('btn-live'),
+            btnPlayPause: document.getElementById('btn-play-pause'),
+            btnFullscreen: document.getElementById('btn-fullscreen'),
+            progressBar: document.getElementById('progress-bar'),
+            progressPosition: document.getElementById('progress-position'),
+            channelList: document.getElementById('channel-list'),
+            searchInput: document.getElementById('search-input'),
+        };
+
         this.init();
     }
 
@@ -160,7 +175,7 @@ class IPTVPlayer {
     loadVideoFromBuffer() {
         if (!this.currentChannel) return;
 
-        var bufferUrl = '/buffer/' + this.getSafeName(this.currentChannel.name) + '/live.m3u8';
+        var bufferUrl = '/buffer/' + ChannelUtils.getSafeName(this.currentChannel.name) + '/live.m3u8';
         this.showIndicator(IndicatorTypes.LOADING, {message: Messages.LOADING});
 
         this.waitForBuffer(bufferUrl)
@@ -304,27 +319,7 @@ class IPTVPlayer {
         this.currentCategory = channel.category || null;
 
         try {
-            var history = {};
-            var stored = localStorage.getItem(StorageKeys.WATCH_HISTORY);
-            if (stored) history = JSON.parse(stored);
-
-            if (!history[channel.name]) {
-                history[channel.name] = {count: 0, lastWatched: Date.now()};
-            }
-            history[channel.name].count++;
-            history[channel.name].lastWatched = Date.now();
-
-            var keys = Object.keys(history);
-            if (keys.length > UIConstants.MAX_WATCH_HISTORY) {
-                var sortedKeys = keys.sort(function (a, b) {
-                    return history[b].lastWatched - history[a].lastWatched;
-                });
-                for (var i = UIConstants.MAX_WATCH_HISTORY; i < sortedKeys.length; i++) {
-                    delete history[sortedKeys[i]];
-                }
-            }
-            localStorage.setItem(StorageKeys.WATCH_HISTORY, JSON.stringify(history));
-            this.watchHistory = history;
+            this.watchHistory = ChannelUtils.addToWatchHistory(this.watchHistory, channel.name);
         } catch (e) {
             console.error('Watch history error:', e);
         }
@@ -423,7 +418,7 @@ class IPTVPlayer {
 
     showIndicator(type, data) {
         data = data || {};
-        var overlay = document.getElementById('video-overlay');
+        var overlay = this.els.overlay;
         if (!overlay) return;
 
         if (this.overlayType === IndicatorTypes.ERROR_PERMANENT && type !== IndicatorTypes.ERROR_PERMANENT) {
@@ -482,10 +477,6 @@ class IPTVPlayer {
                 break;
 
             case IndicatorTypes.ERROR:
-                overlay.innerHTML = (data.message || Messages.ERROR_LABEL);
-                overlay.classList.add('error-mode', 'active');
-                break;
-
             case IndicatorTypes.ERROR_PERMANENT:
                 overlay.innerHTML = (data.message || Messages.ERROR_LABEL);
                 overlay.classList.add('error-mode', 'active');
@@ -518,7 +509,7 @@ class IPTVPlayer {
         if (filterType && this.overlayType !== filterType) {
             return;
         }
-        var overlay = document.getElementById('video-overlay');
+        var overlay = this.els.overlay;
         if (overlay) {
             overlay.classList.remove('active');
         }
@@ -530,7 +521,7 @@ class IPTVPlayer {
     }
 
     updateProgressIndicator(time) {
-        var positionEl = document.getElementById('progress-position');
+        var positionEl = this.els.progressPosition;
         if (!positionEl || !this.video.duration) return;
 
         var positionPercent = (time / this.video.duration) * 100;
@@ -538,8 +529,25 @@ class IPTVPlayer {
         positionEl.style.background = 'rgba(255, 215, 0, 0.8)';
     }
 
+    planSeek(direction) {
+        var baseTime = this.plannedSeekPosition !== null ? this.plannedSeekPosition : this.video.currentTime;
+        var plannedTime = direction > 0
+            ? Math.min(this.video.duration || 0, baseTime + this.seekAmount)
+            : Math.max(0, baseTime - this.seekAmount);
+        plannedTime = Math.round(plannedTime / TimeConstants.SEEK_AMOUNT) * TimeConstants.SEEK_AMOUNT;
+        plannedTime = direction > 0
+            ? Math.min(this.video.duration || 0, plannedTime)
+            : Math.max(0, plannedTime);
+
+        this.plannedSeekPosition = plannedTime;
+        var diff = Math.round(plannedTime - this.video.currentTime);
+        var targetTime = this.getRealTime(plannedTime);
+        this.showIndicator(IndicatorTypes.PLAN, {seconds: diff, time: targetTime});
+        this.updateProgressIndicator(plannedTime);
+    }
+
     toggleChannelList(show) {
-        var list = document.getElementById('channel-list');
+        var list = this.els.channelList;
         if (show === undefined) {
             show = list.classList.contains('hidden');
         }
@@ -569,33 +577,15 @@ class IPTVPlayer {
         }
 
         if (!document.fullscreenElement) {
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen().catch(() => {
-                });
-            } else if (elem.webkitRequestFullscreen) {
-                elem.webkitRequestFullscreen().catch(() => {
-                });
-            } else if (elem.mozRequestFullScreen) {
-                elem.mozRequestFullScreen().catch(() => {
-                });
-            } else if (elem.msRequestFullscreen) {
-                elem.msRequestFullscreen().catch(() => {
-                });
-            }
+            var requestFn = elem.requestFullscreen || elem.webkitRequestFullscreen
+                || elem.mozRequestFullScreen || elem.msRequestFullscreen;
+            if (requestFn) requestFn.call(elem).catch(() => {
+            });
         } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen().catch(() => {
-                });
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen().catch(() => {
-                });
-            } else if (document.mozCancelFullScreen) {
-                document.mozCancelFullScreen().catch(() => {
-                });
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen().catch(() => {
-                });
-            }
+            var exitFn = document.exitFullscreen || document.webkitExitFullscreen
+                || document.mozCancelFullScreen || document.msExitFullscreen;
+            if (exitFn) exitFn.call(document).catch(() => {
+            });
         }
     }
 
@@ -607,24 +597,13 @@ class IPTVPlayer {
     }
 
     setupFullscreenFocusRestore() {
-        var handler = function () {
-            setTimeout(function () {
-                document.body.focus();
-            }, 100);
-        };
-        document.addEventListener('fullscreenchange', handler);
-        document.addEventListener('webkitfullscreenchange', handler);
-        document.addEventListener('mozfullscreenchange', handler);
-        document.addEventListener('MSFullscreenChange', handler);
+        ChannelUtils.setupFullscreenFocusRestore();
     }
 
     updateChannelInfo() {
-        var nameEl = document.getElementById('channel-name');
-        var numberEl = document.getElementById('channel-number');
-
-        if (this.currentChannel && nameEl && numberEl) {
-            nameEl.textContent = this.currentChannel.name;
-            numberEl.textContent = (this.channelIndex + 1).toString();
+        if (this.currentChannel && this.els.channelName && this.els.channelNumber) {
+            this.els.channelName.textContent = this.currentChannel.name;
+            this.els.channelNumber.textContent = (this.channelIndex + 1).toString();
         }
     }
 
@@ -651,10 +630,6 @@ class IPTVPlayer {
         }
 
         throw new Error('Buffer timeout');
-    }
-
-    getSafeName(name) {
-        return name.replace(/[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_-]/g, '_');
     }
 
     setupIdleDetection() {
@@ -698,343 +673,294 @@ class IPTVPlayer {
 
     setupKeyboardEvents() {
         var self = this;
-        var input = document.getElementById('search-input');
-
-        var getRows = function () {
-            return [
-                Array.from(document.querySelectorAll('.control-btn')).filter(function (b) {
-                    return b.offsetParent !== null;
-                }),
-                document.getElementById('progress-bar'),
-                Array.from(document.querySelectorAll('.live-btn, .fullscreen-btn')).filter(function (b) {
-                    return b.offsetParent !== null;
-                })
-            ];
-        };
 
         document.addEventListener('keydown', function (e) {
             if (self.channelListVisible) {
-                if (e.key === PCKeyCodes.ARROW_LEFT || e.key === PCKeyCodes.ARROW_RIGHT) {
-                    var tabs = ['favorites', 'recent', 'all'];
-                    var currentIdx = tabs.indexOf(self.currentTab);
-                    if (currentIdx !== -1) {
-                        e.preventDefault();
-                        var newIdx = e.key === PCKeyCodes.ARROW_RIGHT
-                            ? Math.min(currentIdx + 1, tabs.length - 1)
-                            : Math.max(currentIdx - 1, 0);
-                        self.switchTab(tabs[newIdx]);
-                        var activeTab = document.querySelector('.list-tab.active');
-                        if (activeTab) activeTab.focus();
-                        return;
-                    }
-                }
-
-                if (e.target.id === 'search-input') {
-                    if (e.key === PCKeyCodes.ESCAPE || e.keyCode === TVKeyCodes.BACK) {
-                        e.preventDefault();
-                        self.toggleChannelList(false);
-                        return;
-                    }
-                    if (e.key === PCKeyCodes.ARROW_DOWN) {
-                        e.preventDefault();
-                        var firstChannel = document.querySelector('.channel-item');
-                        if (firstChannel) firstChannel.focus();
-                        return;
-                    }
-                    return;
-                }
-
-                if (e.key === PCKeyCodes.ARROW_UP || e.key === PCKeyCodes.ARROW_DOWN) {
-                    e.preventDefault();
-                    var items = Array.from(document.querySelectorAll('.channel-item, .fav-item:not(.empty), .recent-list-item'));
-                    if (items.length === 0) return;
-
-                    var currentIndex = items.indexOf(document.activeElement);
-                    if (currentIndex === -1) {
-                        var activeEl = document.querySelector('.channel-item.active');
-                        if (activeEl) {
-                            currentIndex = items.indexOf(activeEl);
-                        } else {
-                            currentIndex = 0;
-                        }
-                    }
-                    var targetIndex = (e.key === PCKeyCodes.ARROW_DOWN)
-                        ? (currentIndex < items.length - 1 ? currentIndex + 1 : 0)
-                        : (currentIndex > 0 ? currentIndex - 1 : items.length - 1);
-                    items[targetIndex]?.focus();
-                    items[targetIndex]?.scrollIntoView({behavior: 'smooth', block: 'nearest'});
-                    return;
-                }
-
-                if (e.key === PCKeyCodes.ENTER || e.key === PCKeyCodes.OK) {
-                    e.preventDefault();
-                    var focused = document.querySelector('.channel-item:focus, .fav-item:not(.empty):focus, .recent-list-item:focus');
-                    if (focused) {
-                        var idx = parseInt(focused.dataset.index);
-                        if (!isNaN(idx) && idx >= 0) {
-                            self.playChannel(idx);
-                            self.toggleChannelList(false);
-                        }
-                    }
-                    return;
-                }
-
-                if (e.key === PCKeyCodes.ESCAPE || e.keyCode === TVKeyCodes.BACK || e.keyCode === TVKeyCodes.BLUE) {
-                    e.preventDefault();
-                    self.toggleChannelList(false);
-                    return;
-                }
-
-                if (e.key === PCKeyCodes.ARROW_LEFT || e.key === PCKeyCodes.ARROW_RIGHT) {
-                    e.preventDefault();
-                    return;
-                }
+                if (self.handleChannelListKeys(e)) return;
                 return;
             }
 
-            var currentFocus = document.activeElement;
-            var isIdle = document.body.classList.contains('idle');
-
-            if (isIdle) {
-                self.forceIdle = false;
-                switch (e.key) {
-                    case PCKeyCodes.ARROW_UP:
-                    case PCKeyCodes.ARROW_DOWN:
-                        e.preventDefault();
-                        document.getElementById('progress-bar')?.focus();
-                        document.body.classList.remove('idle');
-                        return;
-                    case PCKeyCodes.ARROW_LEFT:
-                        e.preventDefault();
-                        self.seekBack();
-                        return;
-                    case PCKeyCodes.ARROW_RIGHT:
-                        e.preventDefault();
-                        self.seekForward();
-                        return;
-                }
-                document.body.classList.remove('idle');
-            }
-
-            var rows = getRows();
-            var currentRow = -1;
-            var currentCol = -1;
-
-            for (var r = 0; r < rows.length; r++) {
-                if (!rows[r] || (Array.isArray(rows[r]) && rows[r].length === 0)) continue;
-
-                if (r === 1) {
-                    if (currentFocus === rows[r]) {
-                        currentRow = r;
-                        currentCol = 0;
-                        break;
-                    }
-                } else {
-                    var idx = rows[r].indexOf(currentFocus);
-                    if (idx !== -1) {
-                        currentRow = r;
-                        currentCol = idx;
-                        break;
-                    }
-                }
-            }
-
-            switch (e.key) {
-                case PCKeyCodes.ARROW_UP:
-                    e.preventDefault();
-                    if (currentRow === -1) {
-                        if (rows[0] && rows[0].length > 0) {
-                            var midCol = Math.floor(rows[0].length / 2);
-                            rows[0][midCol]?.focus();
-                        }
-                    } else if (currentRow === 0) {
-                        self.forceIdle = true;
-                        clearTimeout(self.idleTimer);
-                        document.body.classList.add('idle');
-                        if (document.activeElement && document.activeElement !== document.body) {
-                            document.activeElement.blur();
-                        }
-                    } else if (currentRow === 1) {
-                        if (rows[0] && rows[0].length > 0) {
-                            var midCol = Math.floor(rows[0].length / 2);
-                            rows[0][midCol]?.focus();
-                        }
-                    } else if (currentRow === 2) {
-                        rows[1]?.focus();
-                    }
-                    break;
-
-                case PCKeyCodes.ARROW_DOWN:
-                    e.preventDefault();
-                    if (currentRow === -1) {
-                        rows[1]?.focus();
-                    } else if (currentRow === 0) {
-                        rows[1]?.focus();
-                    } else if (currentRow === 1) {
-                        if (rows[2] && rows[2].length > 0) rows[2][0].focus();
-                    } else if (currentRow === 2) {
-                        if (rows[0] && rows[0].length > 0) {
-                            var midCol = Math.floor(rows[0].length / 2);
-                            rows[0][midCol]?.focus();
-                        }
-                    }
-                    break;
-
-                case PCKeyCodes.ARROW_LEFT:
-                    e.preventDefault();
-                    if (currentRow === -1) {
-                        self.seekBack();
-                    } else if (currentRow === 1) {
-                        var baseTime = self.plannedSeekPosition !== null ? self.plannedSeekPosition : self.video.currentTime;
-                        var plannedTime = Math.max(0, baseTime - self.seekAmount);
-                        plannedTime = Math.round(plannedTime / TimeConstants.SEEK_AMOUNT) * TimeConstants.SEEK_AMOUNT;
-                        plannedTime = Math.max(0, plannedTime);
-                        self.plannedSeekPosition = plannedTime;
-                        var diff = Math.round(plannedTime - self.video.currentTime);
-                        var targetTime = self.bufferStartTime ?
-                            new Date(self.bufferStartTime + (Math.round(plannedTime) * 1000)).toLocaleTimeString('tr-TR', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                second: '2-digit'
-                            }) :
-                            self.formatTime(plannedTime);
-                        self.showIndicator(IndicatorTypes.PLAN, {seconds: diff, time: targetTime});
-                        self.updateProgressIndicator(plannedTime);
-                    } else if (currentRow !== -1 && rows[currentRow] && rows[currentRow].length > 0) {
-                        if (currentCol > 0) {
-                            rows[currentRow][currentCol - 1].focus();
-                        } else {
-                            rows[currentRow][rows[currentRow].length - 1].focus();
-                        }
-                    }
-                    break;
-
-                case PCKeyCodes.ARROW_RIGHT:
-                    e.preventDefault();
-                    if (currentRow === -1) {
-                        self.seekForward();
-                    } else if (currentRow === 1) {
-                        var baseTime = self.plannedSeekPosition !== null ? self.plannedSeekPosition : self.video.currentTime;
-                        var plannedTime = Math.min(self.video.duration || 0, baseTime + self.seekAmount);
-                        plannedTime = Math.round(plannedTime / TimeConstants.SEEK_AMOUNT) * TimeConstants.SEEK_AMOUNT;
-                        plannedTime = Math.min(self.video.duration || 0, plannedTime);
-                        self.plannedSeekPosition = plannedTime;
-                        var diff = Math.round(plannedTime - self.video.currentTime);
-                        var targetTime = self.bufferStartTime ?
-                            new Date(self.bufferStartTime + (Math.round(plannedTime) * 1000)).toLocaleTimeString('tr-TR', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                second: '2-digit'
-                            }) :
-                            self.formatTime(plannedTime);
-                        self.showIndicator(IndicatorTypes.PLAN, {seconds: diff, time: targetTime});
-                        self.updateProgressIndicator(plannedTime);
-                    } else if (currentRow !== -1 && rows[currentRow] && rows[currentRow].length > 0) {
-                        if (currentCol < rows[currentRow].length - 1) {
-                            rows[currentRow][currentCol + 1].focus();
-                        } else {
-                            rows[currentRow][0].focus();
-                        }
-                    }
-                    break;
-
-                case PCKeyCodes.ENTER:
-                case PCKeyCodes.OK:
-                    e.preventDefault();
-                    if (currentRow === 1) {
-                        if (self.plannedSeekPosition !== null) {
-                            self.video.currentTime = self.plannedSeekPosition;
-                            self.plannedSeekPosition = null;
-                            self.hideIndicator();
-                        } else {
-                            self.togglePlay();
-                        }
-                    } else if (currentRow !== -1) {
-                        currentFocus.click();
-                    } else {
-                        self.togglePlay();
-                    }
-                    break;
-
-                case PCKeyCodes.ESCAPE:
-                    e.preventDefault();
-                    history.back();
-                    break;
-
-                case PCKeyCodes.F_KEY:
-                case PCKeyCodes.F_KEY_UPPER:
-                    e.preventDefault();
-                    self.toggleFullscreen();
-                    break;
-
-                case PCKeyCodes.SPACE:
-                    e.preventDefault();
-                    self.togglePlay();
-                    break;
-            }
-
-            if (e.keyCode === TVKeyCodes.BACK) {
-                e.preventDefault();
-                if (self.channelListVisible) {
-                    self.toggleChannelList(false);
-                } else {
-                    history.back();
-                }
-            }
-
-            if (e.keyCode === TVKeyCodes.DIGIT_0) {
-                clearTimeout(self.debugKeyTimer);
-                self.debugKeySequence.push(TVKeyCodes.DIGIT_0);
-                if (self.debugKeySequence.length > 3) {
-                    self.debugKeySequence.shift();
-                }
-                self.debugKeyTimer = setTimeout(function () {
-                    self.debugKeySequence = [];
-                }, TimeConstants.DEBUG_SEQUENCE_TIMEOUT);
-            }
-
-            if (e.keyCode === TVKeyCodes.CHANNEL_UP_KEY || e.key === TVKeyCodes.CHANNEL_UP || e.keyCode === TVKeyCodes.PAGE_UP) {
-                e.preventDefault();
-                self.channelUp();
-            }
-            if (e.keyCode === TVKeyCodes.CHANNEL_DOWN_KEY || e.key === TVKeyCodes.CHANNEL_DOWN || e.keyCode === TVKeyCodes.PAGE_DOWN) {
-                e.preventDefault();
-                self.channelDown();
-            }
-
-            switch (e.keyCode) {
-                case TVKeyCodes.RED:
-                    e.preventDefault();
-                    self.goToLive();
-                    break;
-                case TVKeyCodes.GREEN:
-                    break;
-                case TVKeyCodes.YELLOW:
-                    e.preventDefault();
-                    self.toggleFullscreen();
-                    break;
-                case TVKeyCodes.BLUE:
-                    if (self.debugKeySequence.length === 3) {
-                        if (self.debugKeySequence[0] === TVKeyCodes.DIGIT_0 && self.debugKeySequence[1] === TVKeyCodes.DIGIT_0 && self.debugKeySequence[2] === TVKeyCodes.DIGIT_0) {
-                            self.toggleDebugPanel();
-                            self.debugKeySequence = [];
-                            clearTimeout(self.debugKeyTimer);
-                        }
-                    } else {
-                        e.preventDefault();
-                        self.toggleChannelList();
-                    }
-                    break;
-            }
-
-            if (e.keyCode === TVKeyCodes.MEDIA_PLAY_PAUSE || e.keyCode === TVKeyCodes.MEDIA_PLAY ||
-                e.keyCode === TVKeyCodes.MEDIA_PAUSE || e.keyCode === TVKeyCodes.MEDIA_STOP ||
-                e.keyCode === TVKeyCodes.MEDIA_PLAY_ALT || e.keyCode === TVKeyCodes.RECORD ||
-                e.keyCode === TVKeyCodes.RECORD_ALT || e.keyCode === TVKeyCodes.MEDIA_PLAY_PAUSE_ALT) {
-                e.preventDefault();
-                self.togglePlay();
-            }
+            if (self.handleIdleKeys(e)) return;
+            self.handleControlBarKeys(e);
+            self.handleTvSpecialKeys(e);
+            self.handleMediaKeys(e);
         });
+    }
+
+    getControlRows() {
+        return [
+            Array.from(document.querySelectorAll('.control-btn')).filter(function (b) {
+                return b.offsetParent !== null;
+            }),
+            this.els.progressBar,
+            Array.from(document.querySelectorAll('.live-btn, .fullscreen-btn')).filter(function (b) {
+                return b.offsetParent !== null;
+            })
+        ];
+    }
+
+    findControlPosition(rows) {
+        var currentFocus = document.activeElement;
+        for (var r = 0; r < rows.length; r++) {
+            if (!rows[r] || (Array.isArray(rows[r]) && rows[r].length === 0)) continue;
+            if (r === 1) {
+                if (currentFocus === rows[r]) return {row: r, col: 0};
+            } else {
+                var idx = rows[r].indexOf(currentFocus);
+                if (idx !== -1) return {row: r, col: idx};
+            }
+        }
+        return {row: -1, col: -1};
+    }
+
+    handleChannelListKeys(e) {
+        var tabs = ['favorites', 'recent', 'all'];
+        var currentIdx = tabs.indexOf(this.currentTab);
+
+        if (e.key === PCKeyCodes.ARROW_LEFT || e.key === PCKeyCodes.ARROW_RIGHT) {
+            if (currentIdx !== -1) {
+                e.preventDefault();
+                var newIdx = e.key === PCKeyCodes.ARROW_RIGHT
+                    ? Math.min(currentIdx + 1, tabs.length - 1)
+                    : Math.max(currentIdx - 1, 0);
+                this.switchTab(tabs[newIdx]);
+                var activeTab = document.querySelector('.list-tab.active');
+                if (activeTab) activeTab.focus();
+            }
+            return true;
+        }
+
+        if (e.target.id === 'search-input') {
+            if (e.key === PCKeyCodes.ESCAPE || e.keyCode === TVKeyCodes.BACK) {
+                e.preventDefault();
+                this.toggleChannelList(false);
+            } else if (e.key === PCKeyCodes.ARROW_DOWN) {
+                e.preventDefault();
+                var firstChannel = document.querySelector('.channel-item');
+                if (firstChannel) firstChannel.focus();
+            }
+            return true;
+        }
+
+        if (e.key === PCKeyCodes.ARROW_UP || e.key === PCKeyCodes.ARROW_DOWN) {
+            e.preventDefault();
+            var items = Array.from(document.querySelectorAll('.channel-item, .fav-item:not(.empty), .recent-list-item'));
+            if (items.length === 0) return true;
+
+            var currentIndex = items.indexOf(document.activeElement);
+            if (currentIndex === -1) {
+                var activeEl = document.querySelector('.channel-item.active');
+                currentIndex = activeEl ? items.indexOf(activeEl) : 0;
+            }
+            var targetIndex = (e.key === PCKeyCodes.ARROW_DOWN)
+                ? (currentIndex < items.length - 1 ? currentIndex + 1 : 0)
+                : (currentIndex > 0 ? currentIndex - 1 : items.length - 1);
+            items[targetIndex]?.focus();
+            items[targetIndex]?.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+            return true;
+        }
+
+        if (e.key === PCKeyCodes.ENTER || e.key === PCKeyCodes.OK) {
+            e.preventDefault();
+            var focused = document.querySelector('.channel-item:focus, .fav-item:not(.empty):focus, .recent-list-item:focus');
+            if (focused) {
+                var idx = parseInt(focused.dataset.index);
+                if (!isNaN(idx) && idx >= 0) {
+                    this.playChannel(idx);
+                    this.toggleChannelList(false);
+                }
+            }
+            return true;
+        }
+
+        if (e.key === PCKeyCodes.ESCAPE || e.keyCode === TVKeyCodes.BACK || e.keyCode === TVKeyCodes.BLUE) {
+            e.preventDefault();
+            this.toggleChannelList(false);
+            return true;
+        }
+
+        return true;
+    }
+
+    handleIdleKeys(e) {
+        if (!document.body.classList.contains('idle')) return false;
+
+        this.forceIdle = false;
+        switch (e.key) {
+            case PCKeyCodes.ARROW_UP:
+            case PCKeyCodes.ARROW_DOWN:
+                e.preventDefault();
+                this.els.progressBar?.focus();
+                document.body.classList.remove('idle');
+                return true;
+            case PCKeyCodes.ARROW_LEFT:
+                e.preventDefault();
+                this.seekBack();
+                return true;
+            case PCKeyCodes.ARROW_RIGHT:
+                e.preventDefault();
+                this.seekForward();
+                return true;
+        }
+        document.body.classList.remove('idle');
+        return false;
+    }
+
+    handleControlBarKeys(e) {
+        var rows = this.getControlRows();
+        var pos = this.findControlPosition(rows);
+        var midCol = rows[0] ? Math.floor(rows[0].length / 2) : 0;
+
+        switch (e.key) {
+            case PCKeyCodes.ARROW_UP:
+                e.preventDefault();
+                if (pos.row === -1 || pos.row === 1) {
+                    if (rows[0] && rows[0].length > 0) rows[0][midCol]?.focus();
+                } else if (pos.row === 0) {
+                    this.forceIdle = true;
+                    clearTimeout(this.idleTimer);
+                    document.body.classList.add('idle');
+                    if (document.activeElement && document.activeElement !== document.body) {
+                        document.activeElement.blur();
+                    }
+                } else if (pos.row === 2) {
+                    rows[1]?.focus();
+                }
+                break;
+
+            case PCKeyCodes.ARROW_DOWN:
+                e.preventDefault();
+                if (pos.row === -1 || pos.row === 0) {
+                    rows[1]?.focus();
+                } else if (pos.row === 1) {
+                    if (rows[2] && rows[2].length > 0) rows[2][0].focus();
+                } else if (pos.row === 2) {
+                    if (rows[0] && rows[0].length > 0) rows[0][midCol]?.focus();
+                }
+                break;
+
+            case PCKeyCodes.ARROW_LEFT:
+                e.preventDefault();
+                if (pos.row === -1) {
+                    this.seekBack();
+                } else if (pos.row === 1) {
+                    this.planSeek(-1);
+                } else if (pos.row !== -1 && rows[pos.row] && rows[pos.row].length > 0) {
+                    var prevCol = pos.col > 0 ? pos.col - 1 : rows[pos.row].length - 1;
+                    rows[pos.row][prevCol].focus();
+                }
+                break;
+
+            case PCKeyCodes.ARROW_RIGHT:
+                e.preventDefault();
+                if (pos.row === -1) {
+                    this.seekForward();
+                } else if (pos.row === 1) {
+                    this.planSeek(1);
+                } else if (pos.row !== -1 && rows[pos.row] && rows[pos.row].length > 0) {
+                    var nextCol = pos.col < rows[pos.row].length - 1 ? pos.col + 1 : 0;
+                    rows[pos.row][nextCol].focus();
+                }
+                break;
+
+            case PCKeyCodes.ENTER:
+            case PCKeyCodes.OK:
+                e.preventDefault();
+                if (pos.row === 1) {
+                    if (this.plannedSeekPosition !== null) {
+                        this.video.currentTime = this.plannedSeekPosition;
+                        this.plannedSeekPosition = null;
+                        this.hideIndicator();
+                    } else {
+                        this.togglePlay();
+                    }
+                } else if (pos.row !== -1) {
+                    document.activeElement.click();
+                } else {
+                    this.togglePlay();
+                }
+                break;
+
+            case PCKeyCodes.ESCAPE:
+                e.preventDefault();
+                history.back();
+                break;
+
+            case PCKeyCodes.F_KEY:
+            case PCKeyCodes.F_KEY_UPPER:
+                e.preventDefault();
+                this.toggleFullscreen();
+                break;
+
+            case PCKeyCodes.SPACE:
+                e.preventDefault();
+                this.togglePlay();
+                break;
+        }
+    }
+
+    handleTvSpecialKeys(e) {
+        if (e.keyCode === TVKeyCodes.BACK) {
+            e.preventDefault();
+            if (this.channelListVisible) {
+                this.toggleChannelList(false);
+            } else {
+                history.back();
+            }
+        }
+
+        if (e.keyCode === TVKeyCodes.DIGIT_0) {
+            clearTimeout(this.debugKeyTimer);
+            this.debugKeySequence.push(TVKeyCodes.DIGIT_0);
+            if (this.debugKeySequence.length > 3) this.debugKeySequence.shift();
+            var self = this;
+            this.debugKeyTimer = setTimeout(function () {
+                self.debugKeySequence = [];
+            }, TimeConstants.DEBUG_SEQUENCE_TIMEOUT);
+        }
+
+        if (e.keyCode === TVKeyCodes.CHANNEL_UP_KEY || e.key === TVKeyCodes.CHANNEL_UP || e.keyCode === TVKeyCodes.PAGE_UP) {
+            e.preventDefault();
+            this.channelUp();
+        }
+        if (e.keyCode === TVKeyCodes.CHANNEL_DOWN_KEY || e.key === TVKeyCodes.CHANNEL_DOWN || e.keyCode === TVKeyCodes.PAGE_DOWN) {
+            e.preventDefault();
+            this.channelDown();
+        }
+
+        switch (e.keyCode) {
+            case TVKeyCodes.RED:
+                e.preventDefault();
+                this.goToLive();
+                break;
+            case TVKeyCodes.YELLOW:
+                e.preventDefault();
+                this.toggleFullscreen();
+                break;
+            case TVKeyCodes.BLUE:
+                if (this.debugKeySequence.length === 3 &&
+                    this.debugKeySequence[0] === TVKeyCodes.DIGIT_0 &&
+                    this.debugKeySequence[1] === TVKeyCodes.DIGIT_0 &&
+                    this.debugKeySequence[2] === TVKeyCodes.DIGIT_0) {
+                    this.toggleDebugPanel();
+                    this.debugKeySequence = [];
+                    clearTimeout(this.debugKeyTimer);
+                } else {
+                    e.preventDefault();
+                    this.toggleChannelList();
+                }
+                break;
+        }
+    }
+
+    handleMediaKeys(e) {
+        var mediaKeys = [TVKeyCodes.MEDIA_PLAY_PAUSE, TVKeyCodes.MEDIA_PLAY, TVKeyCodes.MEDIA_PAUSE,
+            TVKeyCodes.MEDIA_STOP, TVKeyCodes.MEDIA_PLAY_ALT, TVKeyCodes.RECORD,
+            TVKeyCodes.RECORD_ALT, TVKeyCodes.MEDIA_PLAY_PAUSE_ALT];
+        if (mediaKeys.indexOf(e.keyCode) !== -1) {
+            e.preventDefault();
+            this.togglePlay();
+        }
     }
 
     setupMediaKeyEvents() {
@@ -1078,123 +1004,84 @@ class IPTVPlayer {
         }
     }
 
+    bindClick(id, handler) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('click', handler);
+        return el;
+    }
+
     setupRemoteButtons() {
         var self = this;
 
-        var btnPlayPause = document.getElementById('btn-play-pause');
-        if (btnPlayPause) {
-            btnPlayPause.addEventListener('click', function () {
-                self.togglePlay();
-            });
-        }
+        this.bindClick('btn-play-pause', function () {
+            self.togglePlay();
+        });
+        this.bindClick('btn-live', function () {
+            self.goToLive();
+        });
+        this.bindClick('btn-ch-prev', function () {
+            self.channelDown();
+        });
+        this.bindClick('btn-ch-next', function () {
+            self.channelUp();
+        });
+        this.bindClick('btn-rwnd', function () {
+            self.seekBack();
+        });
+        this.bindClick('btn-fwd', function () {
+            self.seekForward();
+        });
+        this.bindClick('btn-channels', function () {
+            self.toggleChannelList();
+        });
+        this.bindClick('btn-fullscreen', function () {
+            self.toggleFullscreen();
+        });
+        this.bindClick('btn-close-list', function () {
+            self.toggleChannelList(false);
+        });
 
-        var btnLive = document.getElementById('btn-live');
-        if (btnLive) {
-            btnLive.addEventListener('click', function () {
-                self.goToLive();
-            });
-        }
-
-        var btnChPrev = document.getElementById('btn-ch-prev');
-        if (btnChPrev) {
-            btnChPrev.addEventListener('click', function () {
-                self.channelDown();
-            });
-        }
-
-        var btnChNext = document.getElementById('btn-ch-next');
-        if (btnChNext) {
-            btnChNext.addEventListener('click', function () {
-                self.channelUp();
-            });
-        }
-
-        var btnRewind = document.getElementById('btn-rwnd');
-        if (btnRewind) {
-            btnRewind.addEventListener('click', function () {
-                self.seekBack();
-            });
-        }
-
-        var btnFwd = document.getElementById('btn-fwd');
-        if (btnFwd) {
-            btnFwd.addEventListener('click', function () {
-                self.seekForward();
-            });
-        }
-
-        var btnChannels = document.getElementById('btn-channels');
-        if (btnChannels) {
-            btnChannels.addEventListener('click', function () {
-                self.toggleChannelList();
-            });
-        }
-
-        var btnFullscreen = document.getElementById('btn-fullscreen');
-        if (btnFullscreen) {
-            btnFullscreen.addEventListener('click', function () {
-                self.toggleFullscreen();
-            });
-        }
-
-        var btnCloseList = document.getElementById('btn-close-list');
-        if (btnCloseList) {
-            btnCloseList.addEventListener('click', function () {
-                self.toggleChannelList(false);
-            });
-        }
-
-        var searchInput = document.getElementById('search-input');
-        if (searchInput) {
-            searchInput.addEventListener('input', function (e) {
+        if (this.els.searchInput) {
+            this.els.searchInput.addEventListener('input', function (e) {
                 self.renderChannelList(e.target.value);
             });
         }
 
-        var progressBar = document.getElementById('progress-bar');
-        if (progressBar) {
-            progressBar.addEventListener('click', function (e) {
-                var rect = progressBar.getBoundingClientRect();
+        if (this.els.progressBar) {
+            this.els.progressBar.addEventListener('click', function (e) {
+                var rect = self.els.progressBar.getBoundingClientRect();
                 var percent = (e.clientX - rect.left) / rect.width;
                 if (self.video.duration) {
                     var newTime = percent * self.video.duration;
                     var diff = Math.round(newTime - self.video.currentTime);
                     self.video.currentTime = newTime;
                     self.showIndicator(IndicatorTypes.PLAN, {
-                        seconds: diff,
-                        time: self.getRealTime(newTime),
-                        autoHide: true
+                        seconds: diff, time: self.getRealTime(newTime), autoHide: true
                     });
                 }
             });
-
-            progressBar.addEventListener('focus', function () {
+            this.els.progressBar.addEventListener('focus', function () {
                 document.body.classList.remove('idle');
                 self.plannedSeekPosition = null;
                 self.updateProgress();
             });
-
-            progressBar.addEventListener('blur', function () {
+            this.els.progressBar.addEventListener('blur', function () {
                 self.plannedSeekPosition = null;
                 self.updateProgress();
                 self.hideIndicator();
             });
         }
 
-        var backBtn = document.getElementById('btn-back');
-        if (backBtn) {
-            backBtn.addEventListener('click', function (e) {
-                e.preventDefault();
-                history.back();
-            });
-        }
+        this.bindClick('btn-back', function (e) {
+            e.preventDefault();
+            history.back();
+        });
     }
 
     updatePlayButtons() {
-        var btnPlayPause = document.getElementById('btn-play-pause');
-        if (!btnPlayPause) return;
+        if (!this.els.btnPlayPause) return;
 
-        var icon = btnPlayPause.querySelector('.btn-icon');
+        var icon = this.els.btnPlayPause.querySelector('.btn-icon');
         if (this.video.paused) {
             icon.innerHTML = Icons.PLAY;
         } else {
@@ -1203,30 +1090,21 @@ class IPTVPlayer {
     }
 
     updateProgress() {
-        var positionEl = document.getElementById('progress-position');
+        if (!this.els.progressPosition) return;
+        if (this.plannedSeekPosition !== null) return;
 
-        if (!positionEl) return;
-
-        if (this.plannedSeekPosition !== null) {
-            return;
-        }
-
-        positionEl.style.background = '#00d4ff';
+        this.els.progressPosition.style.background = '#00d4ff';
 
         if (this.video.duration) {
             var positionPercent = (this.video.currentTime / this.video.duration) * 100;
-            positionEl.style.width = positionPercent + '%';
+            this.els.progressPosition.style.width = positionPercent + '%';
         } else {
-            positionEl.style.width = '100%';
+            this.els.progressPosition.style.width = '100%';
         }
     }
 
     updateTimeDisplay() {
-        var currentTimeEl = document.getElementById('current-time');
-        var totalTimeEl = document.getElementById('total-time');
-        var liveBtn = document.getElementById('btn-live');
-
-        if (!currentTimeEl || !totalTimeEl) return;
+        if (!this.els.currentTime || !this.els.totalTime) return;
 
         if (this.plannedSeekPosition !== null) {
             return;
@@ -1236,20 +1114,16 @@ class IPTVPlayer {
             var currentSecs = Math.floor(this.video.currentTime);
             var mins = Math.floor(currentSecs / 60);
             var secs = currentSecs % 60;
-            currentTimeEl.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+            this.els.currentTime.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
         } else {
-            currentTimeEl.textContent = '0:00';
+            this.els.currentTime.textContent = '0:00';
         }
 
-        totalTimeEl.textContent = this.getRealTime(this.video.currentTime);
+        this.els.totalTime.textContent = this.getRealTime(this.video.currentTime);
 
-        if (liveBtn) {
+        if (this.els.btnLive) {
             var isAtLive = this.video.duration && (this.video.duration - this.video.currentTime) < TimeConstants.LIVE_POSITION;
-            if (isAtLive) {
-                liveBtn.classList.add('hidden');
-            } else {
-                liveBtn.classList.remove('hidden');
-            }
+            this.els.btnLive.classList.toggle('hidden', isAtLive);
         }
 
         this.updateProgress();
@@ -1287,6 +1161,20 @@ class IPTVPlayer {
         else if (tabName === 'all') this.renderAllTab();
     }
 
+    bindChannelItemClick(container, selector) {
+        var self = this;
+        container.onclick = function (e) {
+            var item = e.target.closest(selector);
+            if (item) {
+                var idx = parseInt(item.dataset.index);
+                if (!isNaN(idx) && idx >= 0) {
+                    self.playChannel(idx);
+                    self.toggleChannelList(false);
+                }
+            }
+        };
+    }
+
     renderFavoritesTab() {
         var container = document.getElementById('tab-favorites');
         if (!container) return;
@@ -1298,7 +1186,9 @@ class IPTVPlayer {
         for (var i = 0; i < UIConstants.MAX_FAVORITES; i++) {
             var fav = this.favorites[i];
             if (fav) {
-                var globalIdx = channels.findIndex(function (ch) { return ch.name === fav.name; });
+                var globalIdx = channels.findIndex(function (ch) {
+                    return ch.name === fav.name;
+                });
                 var isActive = globalIdx === this.channelIndex;
                 html += '<div class="fav-item' + (isActive ? ' active' : '') + '" data-index="' + globalIdx + '" tabindex="0">' +
                     '<span class="fav-number">' + (i + 1) + '</span>' +
@@ -1314,16 +1204,7 @@ class IPTVPlayer {
 
         container.innerHTML = html;
 
-        container.onclick = function (e) {
-            var item = e.target.closest('.fav-item:not(.empty)');
-            if (item) {
-                var idx = parseInt(item.dataset.index);
-                if (!isNaN(idx) && idx >= 0) {
-                    self.playChannel(idx);
-                    self.toggleChannelList(false);
-                }
-            }
-        };
+        this.bindChannelItemClick(container, '.fav-item:not(.empty)');
     }
 
     renderRecentTab() {
@@ -1335,12 +1216,18 @@ class IPTVPlayer {
 
         var sorted = Object.keys(this.watchHistory)
             .map(function (name) {
-                var ch = channels.find(function (c) { return c.name === name; });
+                var ch = channels.find(function (c) {
+                    return c.name === name;
+                });
                 if (!ch) return null;
                 return {name: name, lastWatched: self.watchHistory[name].lastWatched, channel: ch};
             })
-            .filter(function (item) { return item !== null; })
-            .sort(function (a, b) { return b.lastWatched - a.lastWatched; })
+            .filter(function (item) {
+                return item !== null;
+            })
+            .sort(function (a, b) {
+                return b.lastWatched - a.lastWatched;
+            })
             .slice(0, UIConstants.MAX_WATCH_HISTORY);
 
         if (sorted.length === 0) {
@@ -1358,16 +1245,7 @@ class IPTVPlayer {
                 '</div>';
         }).join('');
 
-        container.onclick = function (e) {
-            var item = e.target.closest('.recent-list-item');
-            if (item) {
-                var idx = parseInt(item.dataset.index);
-                if (!isNaN(idx) && idx >= 0) {
-                    self.playChannel(idx);
-                    self.toggleChannelList(false);
-                }
-            }
-        };
+        this.bindChannelItemClick(container, '.recent-list-item');
     }
 
     renderAllTab() {
@@ -1433,14 +1311,7 @@ class IPTVPlayer {
             return '<div class="' + classes + '" data-index="' + idx + '" tabindex="0">' + ChannelUtils.escapeHtml(ch.name) + '</div>';
         }).join('');
 
-        items.onclick = function (e) {
-            var item = e.target.closest('.channel-item');
-            if (item) {
-                var idx = parseInt(item.dataset.index);
-                self.playChannel(idx);
-                self.toggleChannelList(false);
-            }
-        };
+        this.bindChannelItemClick(items, '.channel-item');
     }
 }
 
