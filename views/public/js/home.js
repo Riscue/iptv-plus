@@ -460,14 +460,14 @@ class HomePage {
     }
 
     handleColorKeys(e) {
-        if (e.keyCode === 404) {
+        if (e.keyCode === TVKeyCodes.GREEN) {
             e.preventDefault();
             var recordingEl = document.querySelector('.recent-item.recording');
             if (recordingEl) recordingEl.click();
             return true;
         }
 
-        if (e.keyCode === 403 || e.keyCode === 405) {
+        if (e.keyCode === TVKeyCodes.RED || e.keyCode === TVKeyCodes.YELLOW) {
             e.preventDefault();
             var active = document.activeElement;
             if (active.classList.contains('favorite-item') && !active.classList.contains('empty')) {

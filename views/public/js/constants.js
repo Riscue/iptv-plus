@@ -9,10 +9,12 @@ const PCKeyCodes = {
     SPACE: ' ',
     F_KEY: 'f',
     F_KEY_UPPER: 'F',
+    D_KEY: 'd',
+    D_KEY_UPPER: 'D',
 };
 
 const TVKeyCodes = {
-    BACK: 1001,
+    BACK: 461,
 
     CHANNEL_UP: 'ChannelUp',
     CHANNEL_DOWN: 'ChannelDown',

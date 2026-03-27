@@ -10,7 +10,6 @@ class IPTVPlayer {
         this.seekAmount = TimeConstants.SEEK_AMOUNT;
         this.idleTimer = null;
         this.idleTimeout = TimeConstants.IDLE_TIMEOUT;
-        this.heartbeatInterval = null;
         this.isLoading = false;
         this.currentUrl = null;
         this.bufferStartTime = null;
@@ -18,9 +17,6 @@ class IPTVPlayer {
         this.autoFullscreenDone = false;
         this.overlayTimer = null;
         this.overlayType = null;
-        this.debugKeyPresses = 0;
-        this.debugKeySequence = [];
-        this.debugKeyTimer = null;
         this.currentTab = 'favorites';
         this.favorites = ChannelUtils.loadFavorites();
         this.watchHistory = ChannelUtils.loadWatchHistory();
@@ -388,22 +384,13 @@ class IPTVPlayer {
     }
 
     seekBack() {
-        var newTime = Math.max(0, this.video.currentTime - this.seekAmount);
-        this.video.currentTime = newTime;
+        this.video.currentTime = Math.max(0, this.video.currentTime - this.seekAmount);
         this.showIndicator(IndicatorTypes.SEEK, {seconds: -this.seekAmount});
     }
 
     seekForward() {
-        var newTime = Math.min(this.video.duration || 0, this.video.currentTime + this.seekAmount);
-        this.video.currentTime = newTime;
+        this.video.currentTime = Math.min(this.video.duration || 0, this.video.currentTime + this.seekAmount);
         this.showIndicator(IndicatorTypes.SEEK, {seconds: this.seekAmount});
-    }
-
-    formatTime(seconds) {
-        if (!seconds || isNaN(seconds)) return '0:00';
-        var mins = Math.floor(seconds / 60);
-        var secs = Math.floor(seconds % 60);
-        return mins + ':' + (secs < 10 ? '0' : '') + secs;
     }
 
     getRealTime(videoTimeSeconds) {
@@ -560,10 +547,16 @@ class IPTVPlayer {
                 this.selectedCategory = this.currentCategory;
             }
             this.switchTab(this.currentTab);
-            var activeItem = document.querySelector('.channel-item.active');
+            var activeItem = document.querySelector('.channel-item.active, .fav-item.active, .recent-list-item.active');
             if (activeItem) {
                 activeItem.scrollIntoView({block: 'center'});
                 activeItem.focus();
+            } else {
+                var firstItem = document.querySelector('.tab-content:not(.hidden) .channel-item, .tab-content:not(.hidden) .fav-item:not(.empty), .tab-content:not(.hidden) .recent-list-item');
+                if (firstItem) {
+                    firstItem.scrollIntoView({block: 'center'});
+                    firstItem.focus();
+                }
             }
         }
     }
@@ -586,13 +579,6 @@ class IPTVPlayer {
                 || document.mozCancelFullScreen || document.msExitFullscreen;
             if (exitFn) exitFn.call(document).catch(() => {
             });
-        }
-    }
-
-    toggleDebugPanel() {
-        var debugPanel = document.getElementById('debug-panel');
-        if (debugPanel) {
-            debugPanel.classList.toggle('hidden');
         }
     }
 
@@ -744,7 +730,10 @@ class IPTVPlayer {
 
         if (e.key === PCKeyCodes.ARROW_UP || e.key === PCKeyCodes.ARROW_DOWN) {
             e.preventDefault();
-            var items = Array.from(document.querySelectorAll('.channel-item, .fav-item:not(.empty), .recent-list-item'));
+            var activeTabContent = document.querySelector('.tab-content:not(.hidden)');
+            var items = activeTabContent
+                ? Array.from(activeTabContent.querySelectorAll('.channel-item, .fav-item:not(.empty), .recent-list-item'))
+                : [];
             if (items.length === 0) return true;
 
             var currentIndex = items.indexOf(document.activeElement);
@@ -909,16 +898,6 @@ class IPTVPlayer {
             }
         }
 
-        if (e.keyCode === TVKeyCodes.DIGIT_0) {
-            clearTimeout(this.debugKeyTimer);
-            this.debugKeySequence.push(TVKeyCodes.DIGIT_0);
-            if (this.debugKeySequence.length > 3) this.debugKeySequence.shift();
-            var self = this;
-            this.debugKeyTimer = setTimeout(function () {
-                self.debugKeySequence = [];
-            }, TimeConstants.DEBUG_SEQUENCE_TIMEOUT);
-        }
-
         if (e.keyCode === TVKeyCodes.CHANNEL_UP_KEY || e.key === TVKeyCodes.CHANNEL_UP || e.keyCode === TVKeyCodes.PAGE_UP) {
             e.preventDefault();
             this.channelUp();
@@ -938,17 +917,8 @@ class IPTVPlayer {
                 this.toggleFullscreen();
                 break;
             case TVKeyCodes.BLUE:
-                if (this.debugKeySequence.length === 3 &&
-                    this.debugKeySequence[0] === TVKeyCodes.DIGIT_0 &&
-                    this.debugKeySequence[1] === TVKeyCodes.DIGIT_0 &&
-                    this.debugKeySequence[2] === TVKeyCodes.DIGIT_0) {
-                    this.toggleDebugPanel();
-                    this.debugKeySequence = [];
-                    clearTimeout(this.debugKeyTimer);
-                } else {
-                    e.preventDefault();
-                    this.toggleChannelList();
-                }
+                e.preventDefault();
+                this.toggleChannelList();
                 break;
         }
     }
@@ -1110,15 +1080,7 @@ class IPTVPlayer {
             return;
         }
 
-        if (!isNaN(this.video.currentTime)) {
-            var currentSecs = Math.floor(this.video.currentTime);
-            var mins = Math.floor(currentSecs / 60);
-            var secs = currentSecs % 60;
-            this.els.currentTime.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
-        } else {
-            this.els.currentTime.textContent = '0:00';
-        }
-
+        this.els.currentTime.textContent = ChannelUtils.formatTime(Math.floor(this.video.currentTime));
         this.els.totalTime.textContent = this.getRealTime(this.video.currentTime);
 
         if (this.els.btnLive) {

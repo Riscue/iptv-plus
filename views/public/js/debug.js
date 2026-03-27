@@ -1,6 +1,9 @@
 (function () {
     'use strict';
 
+    var debugKeySequence = [];
+    var debugKeyTimer = null;
+
     var debugPanel = document.getElementById('debug-panel');
     var debugKeyEvents = document.getElementById('debug-key-events');
     var debugLogs = document.getElementById('debug-logs');
@@ -158,7 +161,7 @@
             addErrorLog('UNHANDLED PROMISE', String(event.reason), details);
         };
 
-        var renderLogs = function() {
+        var renderLogs = function () {
             if (!debugLogs) return;
             debugLogs.innerHTML = logs.map(function (log) {
                 return '<div class="debug-log-item">' +
@@ -197,7 +200,30 @@
     document.addEventListener('keydown', function (e) {
         logKeyEvent(e);
 
-        if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
+        if (e.keyCode === TVKeyCodes.DIGIT_0) {
+            clearTimeout(debugKeyTimer);
+            debugKeySequence.push(TVKeyCodes.DIGIT_0);
+            if (debugKeySequence.length > 3) debugKeySequence.shift();
+            debugKeyTimer = setTimeout(function () {
+                debugKeySequence = [];
+            }, TimeConstants.DEBUG_SEQUENCE_TIMEOUT);
+            return true;
+        }
+
+        if (e.keyCode === TVKeyCodes.BLUE) {
+            e.preventDefault();
+            if (debugKeySequence.length === 3 &&
+                debugKeySequence[0] === TVKeyCodes.DIGIT_0 &&
+                debugKeySequence[1] === TVKeyCodes.DIGIT_0 &&
+                debugKeySequence[2] === TVKeyCodes.DIGIT_0) {
+                toggleDebugPanel();
+                debugKeySequence = [];
+                clearTimeout(debugKeyTimer);
+            }
+            return true;
+        }
+
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === PCKeyCodes.D_KEY || e.key === PCKeyCodes.D_KEY_UPPER)) {
             e.preventDefault();
             toggleDebugPanel();
         }

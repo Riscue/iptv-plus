@@ -70,5 +70,12 @@ var ChannelUtils = {
         document.addEventListener('webkitfullscreenchange', handler);
         document.addEventListener('mozfullscreenchange', handler);
         document.addEventListener('MSFullscreenChange', handler);
-    }
+    },
+
+    formatTime: function (seconds) {
+        if (!seconds || isNaN(seconds)) return '0:00';
+        var mins = Math.floor(seconds / 60);
+        var secs = Math.floor(seconds % 60);
+        return mins + ':' + (secs < 10 ? '0' : '') + secs;
+    },
 };
