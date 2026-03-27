@@ -235,14 +235,14 @@ class BufferController {
         lastActivity = Date.now();
     }
 
-    static checkActivity() {
+    static async checkActivity() {
         if (!ffmpegProcess) return;
 
         const inactiveTime = Date.now() - lastActivity;
         if (inactiveTime > ACTIVITY_TIMEOUT) {
             const inactiveMinutes = Math.floor(inactiveTime / 60000);
             logger.log('BUFFER', 'No activity for ' + inactiveMinutes + ' minutes, stopping recording');
-            BufferController.stopBuffer();
+            await BufferController.stopBuffer();
         }
     }
 

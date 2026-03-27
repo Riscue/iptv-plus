@@ -526,8 +526,8 @@ class HomePage {
 
     getVisibleGrids() {
         return ['#favorites-grid', '#recent-grid', '#categories-grid', '#channels-grid']
-            .map(function (id) { return document.querySelector(id); })
-            .filter(function (g) { return g && g.offsetParent !== null; });
+            .map((id) => document.querySelector(id))
+            .filter((g) => g && g.offsetParent !== null);
     }
 
     getGridItems(grid) {
@@ -633,7 +633,10 @@ class HomePage {
                     }
                 }
                 if (gi < 0) {
-                    if (this.els.searchInput) { this.els.searchInput.focus(); return true; }
+                    if (this.els.searchInput) {
+                        this.els.searchInput.focus();
+                        return true;
+                    }
                     target = idx;
                 }
             }
