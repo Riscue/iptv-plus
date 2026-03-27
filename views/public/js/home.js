@@ -1,21 +1,11 @@
 class HomePage {
-    static escapeHtml(unsafe) {
-        if (typeof unsafe !== 'string') return unsafe;
-        return unsafe
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
     constructor() {
         this.categories = [];
         this.channels = [];
         this.currentCategory = null;
-        this.favorites = this.loadFavorites();
+        this.favorites = ChannelUtils.loadFavorites();
         this.searchTimeout = null;
-        this.watchHistory = this.loadWatchHistory();
+        this.watchHistory = ChannelUtils.loadWatchHistory();
         this.currentRecording = null;
 
         this.init();
@@ -100,37 +90,6 @@ class HomePage {
         }
     }
 
-    loadFavorites() {
-        var stored = localStorage.getItem(StorageKeys.FAVORITES);
-        if (stored) {
-            try {
-                return JSON.parse(stored);
-            } catch (e) {
-                console.error('Failed to parse favorites:', e);
-            }
-        }
-        return Array(UIConstants.MAX_FAVORITES).fill(null);
-    }
-
-    saveFavorites() {
-        localStorage.setItem(StorageKeys.FAVORITES, JSON.stringify(this.favorites));
-    }
-
-    loadWatchHistory() {
-        try {
-            var stored = localStorage.getItem(StorageKeys.WATCH_HISTORY);
-            if (stored) {
-                return JSON.parse(stored);
-            }
-        } catch (e) {
-        }
-        return {};
-    }
-
-    saveWatchHistory() {
-        localStorage.setItem(StorageKeys.WATCH_HISTORY, JSON.stringify(this.watchHistory));
-    }
-
     addToWatchHistory(channel) {
         if (!this.watchHistory[channel.name]) {
             this.watchHistory[channel.name] = {count: 0, lastWatched: Date.now()};
@@ -149,7 +108,7 @@ class HomePage {
             }
         }
 
-        this.saveWatchHistory();
+        ChannelUtils.saveWatchHistory(this.watchHistory);
         this.renderRecent();
     }
 
@@ -162,7 +121,7 @@ class HomePage {
             if (existingIndex !== -1) {
                 this.favorites[existingIndex] = null;
                 this.showNotification(Messages.REMOVED_FROM_FAVORITES);
-                this.saveFavorites();
+                ChannelUtils.saveFavorites(this.favorites);
                 this.renderFavorites();
                 return;
             } else {
@@ -172,7 +131,7 @@ class HomePage {
         }
 
         this.favorites[emptyIndex] = channel;
-        this.saveFavorites();
+        ChannelUtils.saveFavorites(this.favorites);
         this.renderFavorites();
         this.showNotification(Messages.ADDED_TO_FAVORITES);
     }
@@ -203,7 +162,7 @@ class HomePage {
             div.dataset.index = i;
 
             if (channel) {
-                div.innerHTML = '<span class="dial-number">' + (i + 1) + '</span>' + '<span class="channel-name">' + HomePage.escapeHtml(channel.name) + '</span>';
+                div.innerHTML = '<span class="dial-number">' + (i + 1) + '</span>' + '<span class="channel-name">' + ChannelUtils.escapeHtml(channel.name) + '</span>';
                 div.tabIndex = 0;
             } else {
                 div.className = 'favorite-item empty';
@@ -289,7 +248,7 @@ class HomePage {
             var isRecording = self.currentRecording && item.name === self.currentRecording.name;
             var timeStr = new Date(item.lastWatched).toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'});
             var recordingBadge = isRecording ? '<div class="recording-badge">' + Messages.RECORDING + '</div>' : '<div class="watch-count">' + Messages.TIME_PREFIX + ' ' + timeStr + '</div>';
-            return '<div class="recent-item' + (isRecording ? ' recording' : '') + '" data-index="' + globalIndex + '" data-recording="' + isRecording + '" tabindex="0">' + '<div class="channel-name">' + HomePage.escapeHtml(item.name) + '</div>' + recordingBadge + '</div>';
+            return '<div class="recent-item' + (isRecording ? ' recording' : '') + '" data-index="' + globalIndex + '" data-recording="' + isRecording + '" tabindex="0">' + '<div class="channel-name">' + ChannelUtils.escapeHtml(item.name) + '</div>' + recordingBadge + '</div>';
         }).join('');
 
         grid.onclick = function (e) {
@@ -328,7 +287,7 @@ class HomePage {
         var self = this;
 
         grid.innerHTML = this.categories.map(function (cat) {
-            return '<div class="category-item" data-category="' + HomePage.escapeHtml(cat.name) + '" tabindex="0">' + '<div class="category-name">' + HomePage.escapeHtml(cat.name) + '</div>' + '<div class="category-count">' + cat.count + ' channels</div>' + '</div>';
+            return '<div class="category-item" data-category="' + ChannelUtils.escapeHtml(cat.name) + '" tabindex="0">' + '<div class="category-name">' + ChannelUtils.escapeHtml(cat.name) + '</div>' + '<div class="category-count">' + cat.count + ' channels</div>' + '</div>';
         }).join('');
 
         grid.onclick = function (e) {
@@ -407,7 +366,7 @@ class HomePage {
 
         grid.innerHTML = channels.map(function (ch) {
             var globalIndex = self.channels.indexOf(ch);
-            return '<div class="channel-item" data-index="' + globalIndex + '" tabindex="0">' + '<div class="channel-name">' + HomePage.escapeHtml(ch.name) + '</div>' + '</div>';
+            return '<div class="channel-item" data-index="' + globalIndex + '" tabindex="0">' + '<div class="channel-name">' + ChannelUtils.escapeHtml(ch.name) + '</div>' + '</div>';
         }).join('');
 
         grid.onclick = function (e) {
@@ -529,7 +488,7 @@ class HomePage {
                 if (active.classList.contains('favorite-item') && !active.classList.contains('empty')) {
                     var index = parseInt(active.dataset.index);
                     self.favorites[index] = null;
-                    self.saveFavorites();
+                    ChannelUtils.saveFavorites(this.favorites);
                     self.renderFavorites();
                     self.showNotification(Messages.REMOVED_FROM_FAVORITES);
                 } else if (active.classList.contains('recent-item') || active.classList.contains('channel-item')) {

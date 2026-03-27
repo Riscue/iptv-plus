@@ -22,8 +22,8 @@ class IPTVPlayer {
         this.debugKeySequence = [];
         this.debugKeyTimer = null;
         this.currentTab = 'favorites';
-        this.favorites = this.loadFavorites();
-        this.watchHistory = this.loadWatchHistory();
+        this.favorites = ChannelUtils.loadFavorites();
+        this.watchHistory = ChannelUtils.loadWatchHistory();
         this.selectedCategory = null;
 
         this.indicatorPriority = IndicatorPriority;
@@ -1255,28 +1255,6 @@ class IPTVPlayer {
         this.updateProgress();
     }
 
-    loadFavorites() {
-        try {
-            var stored = localStorage.getItem(StorageKeys.FAVORITES);
-            if (stored) return JSON.parse(stored);
-        } catch (e) {
-        }
-        return Array(UIConstants.MAX_FAVORITES).fill(null);
-    }
-
-    saveFavorites() {
-        localStorage.setItem(StorageKeys.FAVORITES, JSON.stringify(this.favorites));
-    }
-
-    loadWatchHistory() {
-        try {
-            var stored = localStorage.getItem(StorageKeys.WATCH_HISTORY);
-            if (stored) return JSON.parse(stored);
-        } catch (e) {
-        }
-        return {};
-    }
-
     setupTabListeners() {
         var self = this;
         var tabs = document.querySelectorAll('.list-tab');
@@ -1324,7 +1302,7 @@ class IPTVPlayer {
                 var isActive = globalIdx === this.channelIndex;
                 html += '<div class="fav-item' + (isActive ? ' active' : '') + '" data-index="' + globalIdx + '" tabindex="0">' +
                     '<span class="fav-number">' + (i + 1) + '</span>' +
-                    '<span class="fav-name">' + this.escapeHtml(fav.name) + '</span>' +
+                    '<span class="fav-name">' + ChannelUtils.escapeHtml(fav.name) + '</span>' +
                     '</div>';
             } else {
                 html += '<div class="fav-item empty" tabindex="-1">' +
@@ -1375,7 +1353,7 @@ class IPTVPlayer {
             var isActive = globalIdx === self.channelIndex;
             var timeStr = new Date(item.lastWatched).toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'});
             return '<div class="recent-list-item' + (isActive ? ' active' : '') + '" data-index="' + globalIdx + '" tabindex="0">' +
-                '<span class="recent-name">' + self.escapeHtml(item.name) + '</span>' +
+                '<span class="recent-name">' + ChannelUtils.escapeHtml(item.name) + '</span>' +
                 '<span class="recent-time">' + Messages.TIME_PREFIX + ' ' + timeStr + '</span>' +
                 '</div>';
         }).join('');
@@ -1406,7 +1384,7 @@ class IPTVPlayer {
 
         var html = '<button class="cat-tab' + (!this.selectedCategory ? ' active' : '') + '" data-category="">Tumu</button>';
         categories.forEach(function (cat) {
-            html += '<button class="cat-tab' + (self.selectedCategory === cat ? ' active' : '') + '" data-category="' + self.escapeHtml(cat) + '">' + self.escapeHtml(cat) + '</button>';
+            html += '<button class="cat-tab' + (self.selectedCategory === cat ? ' active' : '') + '" data-category="' + ChannelUtils.escapeHtml(cat) + '">' + ChannelUtils.escapeHtml(cat) + '</button>';
         });
         container.innerHTML = html;
 
@@ -1426,11 +1404,6 @@ class IPTVPlayer {
             catSet[ch.category] = true;
         });
         return Object.keys(catSet).sort();
-    }
-
-    escapeHtml(unsafe) {
-        if (typeof unsafe !== 'string') return unsafe;
-        return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
 
     renderChannelList(filter) {
@@ -1457,7 +1430,7 @@ class IPTVPlayer {
             var idx = self.channels.indexOf(ch);
             var isActive = idx === self.channelIndex;
             var classes = 'channel-item' + (isActive ? ' active' : '');
-            return '<div class="' + classes + '" data-index="' + idx + '" tabindex="0">' + self.escapeHtml(ch.name) + '</div>';
+            return '<div class="' + classes + '" data-index="' + idx + '" tabindex="0">' + ChannelUtils.escapeHtml(ch.name) + '</div>';
         }).join('');
 
         items.onclick = function (e) {
