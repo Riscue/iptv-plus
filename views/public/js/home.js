@@ -165,7 +165,7 @@ class HomePage {
             var channel = this.favorites[i];
             var div = document.createElement('div');
             div.className = 'favorite-item';
-            div.dataset.index = i;
+            div.dataset.index = `${i}`;
 
             if (channel) {
                 div.innerHTML = '<span class="dial-number">' + (i + 1) + '</span>' + '<span class="channel-name">' + ChannelUtils.escapeHtml(channel.name) + '</span>';
@@ -189,7 +189,7 @@ class HomePage {
         };
 
         grid.onkeydown = function (e) {
-            if (e.key === PCKeyCodes.ENTER) {
+            if (e.keyCode === PCKeyCodes.ENTER) {
                 var item = e.target.closest('.favorite-item');
                 if (item && !item.classList.contains('empty')) {
                     var index = parseInt(item.dataset.index);
@@ -253,37 +253,27 @@ class HomePage {
             var globalIndex = self.channels.indexOf(item.channel);
             var isRecording = self.currentRecording && item.name === self.currentRecording.name;
             var timeStr = new Date(item.lastWatched).toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'});
-            var recordingBadge = isRecording ? '<div class="recording-badge">' + Messages.RECORDING + '</div>' : '<div class="watch-count">' + Messages.TIME_PREFIX + ' ' + timeStr + '</div>';
-            return '<div class="recent-item' + (isRecording ? ' recording' : '') + '" data-index="' + globalIndex + '" data-recording="' + isRecording + '" tabindex="0">' + '<div class="channel-name">' + ChannelUtils.escapeHtml(item.name) + '</div>' + recordingBadge + '</div>';
+            var recordingBadge = isRecording ? '<div class="recording-badge">' + Icons.RECORDING + Messages.RECORDING + '</div>' : '<div class="watch-count">' + Messages.TIME + ': ' + timeStr + '</div>';
+            return '<div class="recent-item' + (isRecording ? ' recording' : '') + '" data-index="' + globalIndex + '" tabindex="0">' + '<div class="channel-name">' + ChannelUtils.escapeHtml(item.name) + '</div>' + recordingBadge + '</div>';
         }).join('');
 
         grid.onclick = function (e) {
-            var item = e.target.closest('.recent-item');
-            if (item) {
-                var index = parseInt(item.dataset.index);
-                var isRecording = item.dataset.recording === 'true';
-                if (isRecording) {
-                    self.resumeChannel(self.channels[index]);
-                } else {
-                    self.playChannel(self.channels[index]);
-                }
-            }
+            self.navigate(e);
         };
 
         grid.onkeydown = function (e) {
-            if (e.key === PCKeyCodes.ENTER) {
-                var item = e.target.closest('.recent-item');
-                if (item) {
-                    var index = parseInt(item.dataset.index);
-                    var isRecording = item.dataset.recording === 'true';
-                    if (isRecording) {
-                        self.resumeChannel(self.channels[index]);
-                    } else {
-                        self.playChannel(self.channels[index]);
-                    }
-                }
+            if (e.keyCode === PCKeyCodes.ENTER) {
+                self.navigate(e)
             }
         };
+    }
+
+    navigate(e) {
+        var item = e.target.closest('.recent-item');
+        if (item) {
+            var index = parseInt(item.dataset.index);
+            this.playChannel(this.channels[index]);
+        }
     }
 
     renderCategories() {
@@ -305,7 +295,7 @@ class HomePage {
         };
 
         grid.onkeydown = function (e) {
-            if (e.key === PCKeyCodes.ENTER) {
+            if (e.keyCode === PCKeyCodes.ENTER) {
                 var item = e.target.closest('.category-item');
                 if (item) {
                     var category = item.dataset.category;
@@ -383,7 +373,7 @@ class HomePage {
         };
 
         grid.onkeydown = function (e) {
-            if (e.key === PCKeyCodes.ENTER) {
+            if (e.keyCode === PCKeyCodes.ENTER) {
                 var item = e.target.closest('.channel-item');
                 if (item) {
                     var index = parseInt(item.dataset.index);
@@ -420,7 +410,6 @@ class HomePage {
             return;
         }
 
-        var self = this;
         var filtered = this.channels.filter(function (ch) {
             return ch.name.toLowerCase().indexOf(query.toLowerCase()) !== -1;
         });
@@ -428,7 +417,7 @@ class HomePage {
         this.els.categoriesView.classList.add('hidden');
         this.els.channelsView.classList.remove('hidden');
         this.els.backNav.classList.remove('hidden');
-        this.els.currentCategoryName.textContent = Messages.SEARCH_PREFIX + ' ' + query;
+        this.els.currentCategoryName.textContent = Messages.SEARCH + ': ' + query;
         this.els.channelsTitle.textContent = Messages.SEARCH_RESULTS;
 
         this.renderChannels(filtered.slice(0, 100));
@@ -448,8 +437,8 @@ class HomePage {
     }
 
     handleDigitKey(e) {
-        if (e.key < '1' || e.key > '9') return false;
-        var idx = parseInt(e.key) - 1;
+        if (e.keyCode < PCKeyCodes.DIGIT_1 || e.keyCode > PCKeyCodes.DIGIT_9) return false;
+        var idx = e.keyCode - PCKeyCodes.DIGIT_1;
         if (this.favorites[idx] && !(document.activeElement === this.els.searchInput && this.els.searchInput.value.length > 0)) {
             e.preventDefault();
             this.playChannel(this.favorites[idx]);
@@ -458,7 +447,7 @@ class HomePage {
     }
 
     handleBackKey(e) {
-        if (e.key !== PCKeyCodes.ESCAPE && e.keyCode !== TVKeyCodes.BACK) return false;
+        if (e.keyCode !== PCKeyCodes.ESCAPE && e.keyCode !== TVKeyCodes.BACK) return false;
         if (this.currentCategory) {
             this.showCategoriesView();
         } else if (document.activeElement === this.els.searchInput) {
@@ -469,7 +458,7 @@ class HomePage {
     }
 
     handleSearchEnter(e) {
-        if (e.key !== PCKeyCodes.ENTER && e.key !== PCKeyCodes.OK) return false;
+        if (e.keyCode !== PCKeyCodes.ENTER) return false;
         if (document.activeElement !== this.els.searchInput) return false;
         e.preventDefault();
         if (this.els.searchInput.value.length >= 2) {
@@ -547,11 +536,11 @@ class HomePage {
     }
 
     handleArrowKeys(e) {
-        var arrowKeys = [PCKeyCodes.ARROW_UP, PCKeyCodes.ARROW_DOWN, PCKeyCodes.ARROW_LEFT, PCKeyCodes.ARROW_RIGHT];
-        if (arrowKeys.indexOf(e.key) === -1) return false;
+        var arrowKeys = [PCKeyCodes.ARROW_LEFT, PCKeyCodes.ARROW_UP, PCKeyCodes.ARROW_RIGHT, PCKeyCodes.ARROW_DOWN];
+        if (arrowKeys.indexOf(e.keyCode) === -1) return false;
 
         if (document.activeElement === this.els.searchInput) {
-            if (e.key === PCKeyCodes.ARROW_DOWN) {
+            if (e.keyCode === PCKeyCodes.ARROW_DOWN) {
                 e.preventDefault();
                 var target = this.els.searchInput.value.length >= 2
                     ? document.querySelector('.channel-item')
@@ -594,11 +583,11 @@ class HomePage {
         var target = idx;
         var targetGrid = null;
 
-        if (e.key === PCKeyCodes.ARROW_RIGHT) {
+        if (e.keyCode === PCKeyCodes.ARROW_RIGHT) {
             if (col < cols - 1 && idx + 1 < items.length) target = idx + 1;
-        } else if (e.key === PCKeyCodes.ARROW_LEFT) {
+        } else if (e.keyCode === PCKeyCodes.ARROW_LEFT) {
             if (col > 0) target = idx - 1;
-        } else if (e.key === PCKeyCodes.ARROW_DOWN) {
+        } else if (e.keyCode === PCKeyCodes.ARROW_DOWN) {
             target = idx + cols;
             if (target >= items.length && gridIdx < grids.length - 1) {
                 var gi;
@@ -614,11 +603,11 @@ class HomePage {
             } else if (target >= items.length) {
                 target = idx;
             }
-        } else if (e.key === PCKeyCodes.ARROW_UP) {
+        } else if (e.keyCode === PCKeyCodes.ARROW_UP) {
             if (row > 0) {
                 target = idx - cols;
             } else if (gridIdx === 0) {
-                input.focus();
+                this.els.searchInput.focus();
                 return true;
             } else if (gridIdx > 0) {
                 var gi;
@@ -656,17 +645,11 @@ class HomePage {
     }
 
     handleEnterKey(e) {
-        if (e.key !== PCKeyCodes.ENTER && e.key !== PCKeyCodes.OK) return false;
+        if (e.keyCode !== PCKeyCodes.ENTER) return false;
         if (document.activeElement.tagName === 'INPUT') return false;
         e.preventDefault();
         document.activeElement.click();
         return true;
-    }
-
-    resumeChannel(channel) {
-        console.log('[HOME] Resuming channel:', channel.name, '(keeping recording alive)');
-        this.addToWatchHistory(channel);
-        window.location.href = '/player';
     }
 
     playChannel(channel) {

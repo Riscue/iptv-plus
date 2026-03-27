@@ -197,9 +197,9 @@
     document.addEventListener('keydown', function (e) {
         logKeyEvent(e);
 
-        if (e.keyCode === TVKeyCodes.DIGIT_0) {
+        if (e.keyCode === PCKeyCodes.DIGIT_0) {
             clearTimeout(debugKeyTimer);
-            debugKeySequence.push(TVKeyCodes.DIGIT_0);
+            debugKeySequence.push(PCKeyCodes.DIGIT_0);
             if (debugKeySequence.length > 3) debugKeySequence.shift();
             debugKeyTimer = setTimeout(function () {
                 debugKeySequence = [];
@@ -210,9 +210,9 @@
         if (e.keyCode === TVKeyCodes.BLUE) {
             e.preventDefault();
             if (debugKeySequence.length === 3 &&
-                debugKeySequence[0] === TVKeyCodes.DIGIT_0 &&
-                debugKeySequence[1] === TVKeyCodes.DIGIT_0 &&
-                debugKeySequence[2] === TVKeyCodes.DIGIT_0) {
+                debugKeySequence[0] === PCKeyCodes.DIGIT_0 &&
+                debugKeySequence[1] === PCKeyCodes.DIGIT_0 &&
+                debugKeySequence[2] === PCKeyCodes.DIGIT_0) {
                 toggleDebugPanel();
                 debugKeySequence = [];
                 clearTimeout(debugKeyTimer);
@@ -220,7 +220,7 @@
             return true;
         }
 
-        if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === PCKeyCodes.D_KEY || e.key === PCKeyCodes.D_KEY_UPPER)) {
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.keyCode === PCKeyCodes.D_KEY) {
             e.preventDefault();
             toggleDebugPanel();
         }

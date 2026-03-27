@@ -108,6 +108,7 @@ class IPTVPlayer {
 
         if (support.length === 0) {
             this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: Messages.VIDEO_CODEC_NOT_SUPPORTED});
+            setTimeout(() => history.back(), 2000);
         }
     }
 
@@ -264,10 +265,12 @@ class IPTVPlayer {
                 switch (details) {
                     case HLSErrorDetails.FRAG_LOAD_ERROR:
                         this.showIndicator(IndicatorTypes.ERROR, {message: Messages.SEGMENT_FAILED_TO_LOAD});
+                        this.hls.recoverMediaError();
                         break;
                     case HLSErrorDetails.FRAG_LOAD_TIMEOUT:
                     case HLSErrorDetails.MANIFEST_LOAD_TIMEOUT:
                         this.showIndicator(IndicatorTypes.ERROR, {message: Messages.MANIFEST_LOAD_TIMEOUT});
+                        this.hls.recoverMediaError();
                         break;
                 }
                 return;
@@ -287,6 +290,7 @@ class IPTVPlayer {
                     console.error('[HLS] Media error:', details);
                     if (details === HLSErrorDetails.BUFFER_DECODING_ERROR || details === HLSErrorDetails.BUFFER_CODEC_ERROR || details === HLSErrorDetails.MANIFEST_INCOMPATIBLE_CODECS_ERROR) {
                         this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: Messages.CODEC_NOT_SUPPORTED_TV});
+                        setTimeout(() => history.back(), 2000);
                     } else {
                         this.showIndicator(IndicatorTypes.ERROR, {message: Messages.PLAYBACK_ERROR_RECOVERING});
                         this.hls.recoverMediaError();
@@ -296,6 +300,7 @@ class IPTVPlayer {
                 default:
                     console.error('[HLS] Fatal error:', details);
                     this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: Messages.PLAYBACK_ERROR_CHANGE_CHANNEL});
+                    setTimeout(() => history.back(), 2000);
                     break;
             }
         });
@@ -471,12 +476,12 @@ class IPTVPlayer {
 
             case IndicatorTypes.ERROR:
             case IndicatorTypes.ERROR_PERMANENT:
-                overlay.innerHTML = (data.message || Messages.ERROR_LABEL);
+                overlay.innerHTML = (data.message || Icons.ERROR + Messages.ERROR);
                 overlay.classList.add('error-mode', 'active');
                 break;
 
             case IndicatorTypes.LIVE:
-                overlay.innerHTML = Messages.LIVE;
+                overlay.innerHTML = Icons.LIVE + Messages.LIVE;
                 overlay.classList.add('live-mode', 'active');
                 this.overlayTimer = setTimeout(function () {
                     overlay.classList.remove('active');
@@ -666,10 +671,8 @@ class IPTVPlayer {
         var self = this;
 
         document.addEventListener('keydown', function (e) {
-            if (self.channelListVisible) {
+            if (self.channelListVisible)
                 if (self.handleChannelListKeys(e)) return;
-                return;
-            }
 
             if (self.handleIdleKeys(e)) return;
             self.handleControlBarKeys(e);
@@ -708,10 +711,10 @@ class IPTVPlayer {
         var tabs = ['favorites', 'recent', 'all'];
         var currentIdx = tabs.indexOf(this.currentTab);
 
-        if (e.key === PCKeyCodes.ARROW_LEFT || e.key === PCKeyCodes.ARROW_RIGHT) {
+        if (e.keyCode === PCKeyCodes.ARROW_LEFT || e.keyCode === PCKeyCodes.ARROW_RIGHT) {
             if (currentIdx !== -1) {
                 e.preventDefault();
-                var newIdx = e.key === PCKeyCodes.ARROW_RIGHT
+                var newIdx = e.keyCode === PCKeyCodes.ARROW_RIGHT
                     ? Math.min(currentIdx + 1, tabs.length - 1)
                     : Math.max(currentIdx - 1, 0);
                 this.switchTab(tabs[newIdx]);
@@ -722,10 +725,10 @@ class IPTVPlayer {
         }
 
         if (e.target.id === 'search-input') {
-            if (e.key === PCKeyCodes.ESCAPE || e.keyCode === TVKeyCodes.BACK) {
+            if (e.keyCode === PCKeyCodes.ESCAPE || e.keyCode === TVKeyCodes.BACK) {
                 e.preventDefault();
                 this.toggleChannelList(false);
-            } else if (e.key === PCKeyCodes.ARROW_DOWN) {
+            } else if (e.keyCode === PCKeyCodes.ARROW_DOWN) {
                 e.preventDefault();
                 var firstChannel = document.querySelector('.channel-item');
                 if (firstChannel) firstChannel.focus();
@@ -733,7 +736,7 @@ class IPTVPlayer {
             return true;
         }
 
-        if (e.key === PCKeyCodes.ARROW_UP || e.key === PCKeyCodes.ARROW_DOWN) {
+        if (e.keyCode === PCKeyCodes.ARROW_UP || e.keyCode === PCKeyCodes.ARROW_DOWN) {
             e.preventDefault();
             var activeTabContent = document.querySelector('.tab-content:not(.hidden)');
             var items = activeTabContent
@@ -746,7 +749,7 @@ class IPTVPlayer {
                 var activeEl = document.querySelector('.channel-item.active');
                 currentIndex = activeEl ? items.indexOf(activeEl) : 0;
             }
-            var targetIndex = (e.key === PCKeyCodes.ARROW_DOWN)
+            var targetIndex = (e.keyCode === PCKeyCodes.ARROW_DOWN)
                 ? (currentIndex < items.length - 1 ? currentIndex + 1 : 0)
                 : (currentIndex > 0 ? currentIndex - 1 : items.length - 1);
             items[targetIndex]?.focus();
@@ -754,7 +757,7 @@ class IPTVPlayer {
             return true;
         }
 
-        if (e.key === PCKeyCodes.ENTER || e.key === PCKeyCodes.OK) {
+        if (e.keyCode === PCKeyCodes.ENTER) {
             e.preventDefault();
             var focused = document.querySelector('.channel-item:focus, .fav-item:not(.empty):focus, .recent-list-item:focus');
             if (focused) {
@@ -767,7 +770,7 @@ class IPTVPlayer {
             return true;
         }
 
-        if (e.key === PCKeyCodes.ESCAPE || e.keyCode === TVKeyCodes.BACK || e.keyCode === TVKeyCodes.BLUE) {
+        if (e.keyCode === PCKeyCodes.ESCAPE || e.keyCode === TVKeyCodes.BACK || e.keyCode === TVKeyCodes.BLUE) {
             e.preventDefault();
             this.toggleChannelList(false);
             return true;
@@ -780,7 +783,7 @@ class IPTVPlayer {
         if (!document.body.classList.contains('idle')) return false;
 
         this.forceIdle = false;
-        switch (e.key) {
+        switch (e.keyCode) {
             case PCKeyCodes.ARROW_UP:
             case PCKeyCodes.ARROW_DOWN:
                 e.preventDefault();
@@ -805,7 +808,7 @@ class IPTVPlayer {
         var pos = this.findControlPosition(rows);
         var midCol = rows[0] ? Math.floor(rows[0].length / 2) : 0;
 
-        switch (e.key) {
+        switch (e.keyCode) {
             case PCKeyCodes.ARROW_UP:
                 e.preventDefault();
                 if (pos.row === -1 || pos.row === 1) {
@@ -858,7 +861,6 @@ class IPTVPlayer {
                 break;
 
             case PCKeyCodes.ENTER:
-            case PCKeyCodes.OK:
                 e.preventDefault();
                 if (pos.row === 1) {
                     if (this.plannedSeekPosition !== null) {
@@ -881,7 +883,6 @@ class IPTVPlayer {
                 break;
 
             case PCKeyCodes.F_KEY:
-            case PCKeyCodes.F_KEY_UPPER:
                 e.preventDefault();
                 this.toggleFullscreen();
                 break;
@@ -903,11 +904,11 @@ class IPTVPlayer {
             }
         }
 
-        if (e.keyCode === TVKeyCodes.CHANNEL_UP_KEY || e.key === TVKeyCodes.CHANNEL_UP || e.keyCode === TVKeyCodes.PAGE_UP) {
+        if (e.keyCode === TVKeyCodes.CHANNEL_UP || e.keyCode === PCKeyCodes.PAGE_UP) {
             e.preventDefault();
             this.channelUp();
         }
-        if (e.keyCode === TVKeyCodes.CHANNEL_DOWN_KEY || e.key === TVKeyCodes.CHANNEL_DOWN || e.keyCode === TVKeyCodes.PAGE_DOWN) {
+        if (e.keyCode === TVKeyCodes.CHANNEL_DOWN || e.keyCode === PCKeyCodes.PAGE_DOWN) {
             e.preventDefault();
             this.channelDown();
         }
@@ -929,54 +930,11 @@ class IPTVPlayer {
     }
 
     handleMediaKeys(e) {
-        var mediaKeys = [TVKeyCodes.MEDIA_PLAY_PAUSE, TVKeyCodes.MEDIA_PLAY, TVKeyCodes.MEDIA_PAUSE,
-            TVKeyCodes.MEDIA_STOP, TVKeyCodes.MEDIA_PLAY_ALT, TVKeyCodes.RECORD,
-            TVKeyCodes.RECORD_ALT, TVKeyCodes.MEDIA_PLAY_PAUSE_ALT];
-        if (mediaKeys.indexOf(e.keyCode) !== -1) {
-            e.preventDefault();
-            this.togglePlay();
-        }
+        // TODO Media Keys
     }
 
     setupMediaKeyEvents() {
-        var self = this;
-
-        if (window.webOS && window.webOS.service) {
-            try {
-                webOS.service.request('luna://com.webos.service.ime', {
-                    method: 'registerRemoteKeyboard',
-                    parameters: {},
-                    onSuccess: function () {
-                        console.log('[PLAYER] WebOS media keys registered');
-                    },
-                    onFailure: function () {
-                        console.log('[PLAYER] WebOS media key registration not available');
-                    }
-                });
-            } catch (e) {
-            }
-        }
-
-        document.addEventListener('mediaplay', function () {
-            if (self.els.video.paused) {
-                self.togglePlay();
-            }
-        });
-
-        document.addEventListener('mediapause', function () {
-            if (!self.els.video.paused) {
-                self.togglePlay();
-            }
-        });
-
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.setActionHandler('play', function () {
-                if (self.els.video.paused) self.togglePlay();
-            });
-            navigator.mediaSession.setActionHandler('pause', function () {
-                if (!self.els.video.paused) self.togglePlay();
-            });
-        }
+        // TODO Media Keys
     }
 
     bindClick(id, handler) {
@@ -1207,7 +1165,7 @@ class IPTVPlayer {
             var timeStr = new Date(item.lastWatched).toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'});
             return '<div class="recent-list-item' + (isActive ? ' active' : '') + '" data-index="' + globalIdx + '" tabindex="0">' +
                 '<span class="recent-name">' + ChannelUtils.escapeHtml(item.name) + '</span>' +
-                '<span class="recent-time">' + Messages.TIME_PREFIX + ' ' + timeStr + '</span>' +
+                '<span class="recent-time">' + Messages.TIME + ': ' + timeStr + '</span>' +
                 '</div>';
         }).join('');
 

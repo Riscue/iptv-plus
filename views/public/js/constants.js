@@ -1,41 +1,18 @@
 const PCKeyCodes = {
-    ARROW_UP: 'ArrowUp',
-    ARROW_DOWN: 'ArrowDown',
-    ARROW_LEFT: 'ArrowLeft',
-    ARROW_RIGHT: 'ArrowRight',
-    ENTER: 'Enter',
-    OK: 'OK',
-    ESCAPE: 'Escape',
-    SPACE: ' ',
-    F_KEY: 'f',
-    F_KEY_UPPER: 'F',
-    D_KEY: 'd',
-    D_KEY_UPPER: 'D',
-};
+    ARROW_LEFT: 37,
+    ARROW_UP: 38,
+    ARROW_RIGHT: 39,
+    ARROW_DOWN: 40,
 
-const TVKeyCodes = {
-    BACK: 461,
+    ENTER: 13,
+    ESCAPE: 27,
+    SPACE: 32,
 
-    CHANNEL_UP: 'ChannelUp',
-    CHANNEL_DOWN: 'ChannelDown',
-    CHANNEL_UP_KEY: 427,
-    CHANNEL_DOWN_KEY: 428,
+    D_KEY: 68,
+    F_KEY: 70,
+
     PAGE_UP: 33,
     PAGE_DOWN: 34,
-
-    RED: 403,
-    GREEN: 404,
-    YELLOW: 405,
-    BLUE: 406,
-
-    MEDIA_PLAY_PAUSE: 179,
-    MEDIA_PLAY: 415,
-    MEDIA_PAUSE: 19,
-    MEDIA_STOP: 126,
-    MEDIA_PLAY_ALT: 127,
-    RECORD: 71,
-    RECORD_ALT: 74,
-    MEDIA_PLAY_PAUSE_ALT: 10252,
 
     DIGIT_0: 48,
     DIGIT_1: 49,
@@ -47,6 +24,22 @@ const TVKeyCodes = {
     DIGIT_7: 55,
     DIGIT_8: 56,
     DIGIT_9: 57,
+};
+
+const TVKeyCodes = {
+    RED: 403,
+    GREEN: 404,
+    YELLOW: 405,
+    BLUE: 406,
+
+    BACK: 461,
+
+    CHANNEL_UP: 427, // ?
+    CHANNEL_DOWN: 428, // ?
+
+    PLAY: 415, // ?
+    PAUSE: 19, // ?
+    STOP: 413, // ?
 };
 
 const TimeConstants = {
