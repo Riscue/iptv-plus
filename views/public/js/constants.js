@@ -82,7 +82,6 @@ const StorageKeys = {
 const HLSErrorDetails = {
     FRAG_LOAD_ERROR: 'fragLoadError',
     FRAG_LOAD_TIMEOUT: 'fragLoadTimeOut',
-    MANIFEST_LOAD_ERROR: 'manifestLoadError',
     MANIFEST_LOAD_TIMEOUT: 'manifestLoadTimeOut',
     MANIFEST_INCOMPATIBLE_CODECS_ERROR: 'manifestIncompatibleCodecsError',
     BUFFER_CODEC_ERROR: 'bufferCodecError',

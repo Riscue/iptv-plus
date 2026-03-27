@@ -275,12 +275,8 @@ class IPTVPlayer {
             switch (data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
                     console.error('[HLS] Network error:', details);
-                    if (details === HLSErrorDetails.MANIFEST_LOAD_ERROR) {
-                        this.showIndicator(IndicatorTypes.ERROR, {message: Messages.PLAYLIST_FAILED_TO_LOAD});
-                    } else {
-                        this.showIndicator(IndicatorTypes.ERROR, {message: Messages.CONNECTION_ERROR_RETRYING});
-                    }
-                    this.hls.startLoad();
+                    this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: Messages.CONNECTION_LOST});
+                    setTimeout(() => history.back(), 2000);
                     break;
 
                 case Hls.ErrorTypes.MEDIA_ERROR:
