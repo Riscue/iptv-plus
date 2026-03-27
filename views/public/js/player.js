@@ -191,6 +191,7 @@ class IPTVPlayer {
             .catch(() => {
                 this.hideIndicator(IndicatorTypes.LOADING);
                 this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: Messages.CHANNEL_FAILED_TO_LOAD});
+                setTimeout(() => history.back(), 2000);
             });
     }
 
@@ -347,6 +348,7 @@ class IPTVPlayer {
         } catch (err) {
             this.hideIndicator(IndicatorTypes.LOADING);
             this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: Messages.COULD_NOT_CHANGE_CHANNEL});
+            setTimeout(() => history.back(), 2000);
         }
     }
 
