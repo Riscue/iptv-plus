@@ -20,12 +20,17 @@
         </div>
     </header>
 
-    <section id="favorites">
+    <div id="content-loading" class="content-loading">
+        <div class="loading-spinner"></div>
+        <p class="loading-text">Loading...</p>
+    </div>
+
+    <section id="favorites" class="hidden">
         <h2>Favorites</h2>
         <div id="favorites-grid"></div>
     </section>
 
-    <section id="recent">
+    <section id="recent" class="hidden">
         <h2>Recently Watched</h2>
         <div id="recent-grid"></div>
     </section>
@@ -38,7 +43,7 @@
         <span id="current-category-name"></span>
     </div>
 
-    <section id="categories-view">
+    <section id="categories-view" class="hidden">
         <h2>Categories</h2>
         <div id="categories-grid"></div>
     </section>

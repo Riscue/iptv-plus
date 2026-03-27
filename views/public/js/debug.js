@@ -4,13 +4,15 @@
     var debugKeySequence = [];
     var debugKeyTimer = null;
 
-    var debugPanel = document.getElementById('debug-panel');
-    var debugKeyEvents = document.getElementById('debug-key-events');
-    var debugLogs = document.getElementById('debug-logs');
-    var debugBuildInfo = document.getElementById('debug-build-info');
-    var debugClose = document.getElementById('debug-close');
+    var els = {
+        debugPanel: document.getElementById('debug-panel'),
+        debugKeyEvents: document.getElementById('debug-key-events'),
+        debugLogs: document.getElementById('debug-logs'),
+        debugBuildInfo: document.getElementById('debug-build-info'),
+        debugClose: document.getElementById('debug-close'),
+    }
 
-    if (!debugPanel) return;
+    if (!els.debugPanel) return;
 
     var keyEvents = [];
     var logs = [];
@@ -19,11 +21,11 @@
     var buildInfo = null;
 
     function toggleDebugPanel() {
-        debugPanel.classList.toggle('hidden');
+        els.debugPanel.classList.toggle('hidden');
     }
 
     function loadBuildInfo() {
-        if (!debugBuildInfo) return;
+        if (!els.debugBuildInfo) return;
 
         fetch('/api/build-info')
             .then(function (res) {
@@ -35,12 +37,12 @@
             })
             .catch(function (err) {
                 console.error('[DEBUG] Failed to load build info:', err);
-                debugBuildInfo.innerHTML = '<div class="debug-build-row"><span class="debug-build-value">Build info unavailable</span></div>';
+                els.debugBuildInfo.innerHTML = '<div class="debug-build-row"><span class="debug-build-value">Build info unavailable</span></div>';
             });
     }
 
     function renderBuildInfo() {
-        if (!debugBuildInfo || !buildInfo) return;
+        if (!els.debugBuildInfo || !buildInfo) return;
 
         var buildTime = buildInfo.buildDate ? new Date(buildInfo.buildDate).toLocaleString('tr-TR', {
             day: '2-digit',
@@ -50,7 +52,7 @@
             minute: '2-digit'
         }) : 'N/A';
 
-        debugBuildInfo.innerHTML =
+        els.debugBuildInfo.innerHTML =
             '<span class="debug-build-label">Branch:</span> <span class="debug-build-value">' + escapeHtml(buildInfo.branch) + '</span> | ' +
             '<span class="debug-build-label">Commit:</span> <span class="debug-build-value">' + escapeHtml(buildInfo.commit) + '</span> | ' +
             '<span class="debug-build-label">Build:</span> <span class="debug-build-value">' + escapeHtml(buildTime) + '</span>';
@@ -78,8 +80,8 @@
     }
 
     function renderKeyEvents() {
-        if (!debugKeyEvents) return;
-        debugKeyEvents.innerHTML = keyEvents.map(function (e) {
+        if (!els.debugKeyEvents) return;
+        els.debugKeyEvents.innerHTML = keyEvents.map(function (e) {
             return '<div class="debug-event-item">' +
                 '<span class="debug-event-time">[' + e.time + ']</span> ' +
                 '<span class="debug-event-key">key: "' + escapeHtml(e.key) + '"</span> | ' +
@@ -162,8 +164,8 @@
         };
 
         var renderLogs = function () {
-            if (!debugLogs) return;
-            debugLogs.innerHTML = logs.map(function (log) {
+            if (!els.debugLogs) return;
+            els.debugLogs.innerHTML = logs.map(function (log) {
                 return '<div class="debug-log-item">' +
                     '<span class="debug-log-time">[' + log.time + ']</span> ' +
                     '<span class="debug-log-' + log.type + '">' + escapeHtml(log.message) + '</span>' +
@@ -229,8 +231,8 @@
         }
     });
 
-    if (debugClose) {
-        debugClose.addEventListener('click', toggleDebugPanel);
+    if (els.debugClose) {
+        els.debugClose.addEventListener('click', toggleDebugPanel);
     }
 
     loadBuildInfo();

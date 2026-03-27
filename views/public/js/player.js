@@ -1,7 +1,6 @@
 class IPTVPlayer {
     constructor() {
         this.hls = null;
-        this.video = document.getElementById('video');
         this.currentChannel = null;
         this.currentCategory = null;
         this.channels = [];
@@ -25,6 +24,8 @@ class IPTVPlayer {
         this.indicatorPriority = IndicatorPriority;
 
         this.els = {
+            app: document.getElementById('app'),
+            video: document.getElementById('video'),
             overlay: document.getElementById('video-overlay'),
             channelName: document.getElementById('channel-name'),
             channelNumber: document.getElementById('channel-number'),
@@ -37,6 +38,10 @@ class IPTVPlayer {
             progressPosition: document.getElementById('progress-position'),
             channelList: document.getElementById('channel-list'),
             searchInput: document.getElementById('search-input'),
+            tabFavorites: document.getElementById('tab-favorites'),
+            tabRecent: document.getElementById('tab-recent'),
+            categoryTabs: document.getElementById('category-tabs'),
+            channelItems: document.getElementById('channel-items'),
         };
 
         this.init();
@@ -79,7 +84,7 @@ class IPTVPlayer {
     }
 
     checkCodecSupport() {
-        var video = document.getElementById('video');
+        var video = this.els.video;
         var support = [];
 
         if (video.canPlayType('video/mp4; codecs="avc1.42E01E, mp4a.40.2"')) {
@@ -129,7 +134,7 @@ class IPTVPlayer {
     setupVideoListeners() {
         var self = this;
 
-        this.video.addEventListener('play', function () {
+        this.els.video.addEventListener('play', function () {
             if (!self.autoFullscreenDone) {
                 self.autoFullscreenDone = true;
                 self.toggleFullscreen();
@@ -137,26 +142,26 @@ class IPTVPlayer {
             self.updatePlayButtons();
         }, {once: true});
 
-        this.video.addEventListener('click', function () {
+        this.els.video.addEventListener('click', function () {
             self.togglePlay();
         });
 
-        this.video.addEventListener('play', function () {
+        this.els.video.addEventListener('play', function () {
             self.updatePlayButtons();
         });
-        this.video.addEventListener('pause', function () {
+        this.els.video.addEventListener('pause', function () {
             self.updatePlayButtons();
         });
 
-        this.video.addEventListener('waiting', function () {
+        this.els.video.addEventListener('waiting', function () {
             self.showIndicator(IndicatorTypes.LOADING, {message: Messages.LOADING});
         });
 
-        this.video.addEventListener('playing', function () {
+        this.els.video.addEventListener('playing', function () {
             self.hideIndicator(IndicatorTypes.LOADING);
         });
 
-        this.video.addEventListener('canplay', function () {
+        this.els.video.addEventListener('canplay', function () {
             self.hideIndicator(IndicatorTypes.LOADING);
         });
 
@@ -200,7 +205,7 @@ class IPTVPlayer {
 
         if (Hls.isSupported()) {
             this.setupHls(url);
-        } else if (this.video.canPlayType('application/vnd.apple.mpegurl')) {
+        } else if (this.els.video.canPlayType('application/vnd.apple.mpegurl')) {
             this.setupNativeHls(url);
         }
     }
@@ -219,7 +224,7 @@ class IPTVPlayer {
         });
 
         this.hls.loadSource(url);
-        this.hls.attachMedia(this.video);
+        this.hls.attachMedia(this.els.video);
 
         var firstFragmentLoaded = false;
 
@@ -229,7 +234,7 @@ class IPTVPlayer {
                 this.isLoading = false;
                 this.hideIndicator(IndicatorTypes.LOADING);
                 this.hideIndicator(IndicatorTypes.ERROR);
-                this.video.play().catch(() => {
+                this.els.video.play().catch(() => {
                 });
                 this.updatePlayButtons();
             } else {
@@ -297,10 +302,10 @@ class IPTVPlayer {
     }
 
     setupNativeHls(url) {
-        this.video.src = url;
-        this.video.addEventListener('loadedmetadata', () => {
+        this.els.video.src = url;
+        this.els.video.addEventListener('loadedmetadata', () => {
             this.hideIndicator(IndicatorTypes.LOADING);
-            this.video.play().catch(() => {
+            this.els.video.play().catch(() => {
             });
             this.isLoading = false;
         }, {once: true});
@@ -326,8 +331,8 @@ class IPTVPlayer {
             this.hls.destroy();
             this.hls = null;
         }
-        this.video.pause();
-        this.video.removeAttribute('src');
+        this.els.video.pause();
+        this.els.video.removeAttribute('src');
 
         this.overlayType = null;
         this.showIndicator(IndicatorTypes.LOADING, {message: Messages.LOADING});
@@ -360,22 +365,22 @@ class IPTVPlayer {
     }
 
     togglePlay() {
-        if (this.video.paused) {
-            this.video.play().catch(() => {
+        if (this.els.video.paused) {
+            this.els.video.play().catch(() => {
             });
             this.showIndicator(IndicatorTypes.PLAY, {icon: Icons.PLAY});
         } else {
-            this.video.pause();
+            this.els.video.pause();
             this.showIndicator(IndicatorTypes.PLAY, {icon: Icons.PAUSE});
         }
     }
 
     goToLive() {
-        if (this.video.duration && !isNaN(this.video.duration) && this.video.duration > 0) {
-            this.video.currentTime = this.video.duration;
+        if (this.els.video.duration && !isNaN(this.els.video.duration) && this.els.video.duration > 0) {
+            this.els.video.currentTime = this.els.video.duration;
 
-            if (this.video.paused) {
-                this.video.play().catch(() => {
+            if (this.els.video.paused) {
+                this.els.video.play().catch(() => {
                 });
             }
 
@@ -384,12 +389,12 @@ class IPTVPlayer {
     }
 
     seekBack() {
-        this.video.currentTime = Math.max(0, this.video.currentTime - this.seekAmount);
+        this.els.video.currentTime = Math.max(0, this.els.video.currentTime - this.seekAmount);
         this.showIndicator(IndicatorTypes.SEEK, {seconds: -this.seekAmount});
     }
 
     seekForward() {
-        this.video.currentTime = Math.min(this.video.duration || 0, this.video.currentTime + this.seekAmount);
+        this.els.video.currentTime = Math.min(this.els.video.duration || 0, this.els.video.currentTime + this.seekAmount);
         this.showIndicator(IndicatorTypes.SEEK, {seconds: this.seekAmount});
     }
 
@@ -445,7 +450,7 @@ class IPTVPlayer {
                 var diff = data.seconds || 0;
                 var planPrefix = diff > 0 ? '+' : '';
                 var planIcon = diff > 0 ? Icons.FORWARD : Icons.BACKWARD;
-                var planTime = data.time || this.getRealTime(this.video.currentTime);
+                var planTime = data.time || this.getRealTime(this.els.video.currentTime);
                 overlay.innerHTML = '<div class="plan-info">' + planIcon + ' ' + planPrefix + diff + 's</div>' +
                     '<div class="plan-time">' + planTime + '</div>';
                 overlay.classList.add('plan-mode', 'active');
@@ -475,7 +480,7 @@ class IPTVPlayer {
                 this.overlayTimer = setTimeout(function () {
                     overlay.classList.remove('active');
                     self.overlayType = null;
-                    if (self.video && self.video.readyState < 3 && !self.video.paused) {
+                    if (self.els.video && self.els.video.readyState < 3 && !self.els.video.paused) {
                         self.showIndicator(IndicatorTypes.LOADING);
                     }
                 }, TimeConstants.OVERLAY_AUTO_HIDE / 2);
@@ -509,25 +514,25 @@ class IPTVPlayer {
 
     updateProgressIndicator(time) {
         var positionEl = this.els.progressPosition;
-        if (!positionEl || !this.video.duration) return;
+        if (!positionEl || !this.els.video.duration) return;
 
-        var positionPercent = (time / this.video.duration) * 100;
+        var positionPercent = (time / this.els.video.duration) * 100;
         positionEl.style.width = positionPercent + '%';
         positionEl.style.background = 'rgba(255, 215, 0, 0.8)';
     }
 
     planSeek(direction) {
-        var baseTime = this.plannedSeekPosition !== null ? this.plannedSeekPosition : this.video.currentTime;
+        var baseTime = this.plannedSeekPosition !== null ? this.plannedSeekPosition : this.els.video.currentTime;
         var plannedTime = direction > 0
-            ? Math.min(this.video.duration || 0, baseTime + this.seekAmount)
+            ? Math.min(this.els.video.duration || 0, baseTime + this.seekAmount)
             : Math.max(0, baseTime - this.seekAmount);
         plannedTime = Math.round(plannedTime / TimeConstants.SEEK_AMOUNT) * TimeConstants.SEEK_AMOUNT;
         plannedTime = direction > 0
-            ? Math.min(this.video.duration || 0, plannedTime)
+            ? Math.min(this.els.video.duration || 0, plannedTime)
             : Math.max(0, plannedTime);
 
         this.plannedSeekPosition = plannedTime;
-        var diff = Math.round(plannedTime - this.video.currentTime);
+        var diff = Math.round(plannedTime - this.els.video.currentTime);
         var targetTime = this.getRealTime(plannedTime);
         this.showIndicator(IndicatorTypes.PLAN, {seconds: diff, time: targetTime});
         this.updateProgressIndicator(plannedTime);
@@ -562,7 +567,7 @@ class IPTVPlayer {
     }
 
     toggleFullscreen() {
-        var elem = document.getElementById('app');
+        var elem = this.els.app;
 
         if (window.webOS && webOS.window && webOS.window.setFullScreen) {
             webOS.window.setFullScreen(true);
@@ -632,7 +637,7 @@ class IPTVPlayer {
             document.body.classList.remove('idle');
             clearTimeout(self.idleTimer);
             self.idleTimer = setTimeout(function () {
-                if (!self.channelListVisible && !self.video.paused && self.plannedSeekPosition === null) {
+                if (!self.channelListVisible && !self.els.video.paused && self.plannedSeekPosition === null) {
                     document.body.classList.add('idle');
                 }
             }, self.idleTimeout);
@@ -646,8 +651,7 @@ class IPTVPlayer {
     }
 
     setupHeartbeat() {
-        var self = this;
-        this.heartbeatInterval = setInterval(function () {
+        setInterval(function () {
             fetch('/api/buffer/heartbeat', {
                 method: 'GET',
                 cache: 'no-cache',
@@ -857,7 +861,7 @@ class IPTVPlayer {
                 e.preventDefault();
                 if (pos.row === 1) {
                     if (this.plannedSeekPosition !== null) {
-                        this.video.currentTime = this.plannedSeekPosition;
+                        this.els.video.currentTime = this.plannedSeekPosition;
                         this.plannedSeekPosition = null;
                         this.hideIndicator();
                     } else {
@@ -953,23 +957,23 @@ class IPTVPlayer {
         }
 
         document.addEventListener('mediaplay', function () {
-            if (self.video.paused) {
+            if (self.els.video.paused) {
                 self.togglePlay();
             }
         });
 
         document.addEventListener('mediapause', function () {
-            if (!self.video.paused) {
+            if (!self.els.video.paused) {
                 self.togglePlay();
             }
         });
 
         if ('mediaSession' in navigator) {
             navigator.mediaSession.setActionHandler('play', function () {
-                if (self.video.paused) self.togglePlay();
+                if (self.els.video.paused) self.togglePlay();
             });
             navigator.mediaSession.setActionHandler('pause', function () {
-                if (!self.video.paused) self.togglePlay();
+                if (!self.els.video.paused) self.togglePlay();
             });
         }
     }
@@ -1021,10 +1025,10 @@ class IPTVPlayer {
             this.els.progressBar.addEventListener('click', function (e) {
                 var rect = self.els.progressBar.getBoundingClientRect();
                 var percent = (e.clientX - rect.left) / rect.width;
-                if (self.video.duration) {
-                    var newTime = percent * self.video.duration;
-                    var diff = Math.round(newTime - self.video.currentTime);
-                    self.video.currentTime = newTime;
+                if (self.els.video.duration) {
+                    var newTime = percent * self.els.video.duration;
+                    var diff = Math.round(newTime - self.els.video.currentTime);
+                    self.els.video.currentTime = newTime;
                     self.showIndicator(IndicatorTypes.PLAN, {
                         seconds: diff, time: self.getRealTime(newTime), autoHide: true
                     });
@@ -1052,7 +1056,7 @@ class IPTVPlayer {
         if (!this.els.btnPlayPause) return;
 
         var icon = this.els.btnPlayPause.querySelector('.btn-icon');
-        if (this.video.paused) {
+        if (this.els.video.paused) {
             icon.innerHTML = Icons.PLAY;
         } else {
             icon.innerHTML = Icons.PAUSE;
@@ -1065,8 +1069,8 @@ class IPTVPlayer {
 
         this.els.progressPosition.style.background = '#00d4ff';
 
-        if (this.video.duration) {
-            var positionPercent = (this.video.currentTime / this.video.duration) * 100;
+        if (this.els.video.duration) {
+            var positionPercent = (this.els.video.currentTime / this.els.video.duration) * 100;
             this.els.progressPosition.style.width = positionPercent + '%';
         } else {
             this.els.progressPosition.style.width = '100%';
@@ -1080,11 +1084,11 @@ class IPTVPlayer {
             return;
         }
 
-        this.els.currentTime.textContent = ChannelUtils.formatTime(Math.floor(this.video.currentTime));
-        this.els.totalTime.textContent = this.getRealTime(this.video.currentTime);
+        this.els.currentTime.textContent = ChannelUtils.formatTime(Math.floor(this.els.video.currentTime));
+        this.els.totalTime.textContent = this.getRealTime(this.els.video.currentTime);
 
         if (this.els.btnLive) {
-            var isAtLive = this.video.duration && (this.video.duration - this.video.currentTime) < TimeConstants.LIVE_POSITION;
+            var isAtLive = this.els.video.duration && (this.els.video.duration - this.els.video.currentTime) < TimeConstants.LIVE_POSITION;
             this.els.btnLive.classList.toggle('hidden', isAtLive);
         }
 
@@ -1138,10 +1142,9 @@ class IPTVPlayer {
     }
 
     renderFavoritesTab() {
-        var container = document.getElementById('tab-favorites');
+        var container = this.els.tabFavorites;
         if (!container) return;
 
-        var self = this;
         var channels = this.channels;
 
         var html = '';
@@ -1170,7 +1173,7 @@ class IPTVPlayer {
     }
 
     renderRecentTab() {
-        var container = document.getElementById('tab-recent');
+        var container = this.els.tabRecent;
         if (!container) return;
 
         var self = this;
@@ -1216,7 +1219,7 @@ class IPTVPlayer {
     }
 
     renderCategoryTabs() {
-        var container = document.getElementById('category-tabs');
+        var container = this.els.categoryTabs;
         if (!container) return;
 
         var self = this;
@@ -1248,7 +1251,7 @@ class IPTVPlayer {
 
     renderChannelList(filter) {
         if (filter === undefined) filter = '';
-        var items = document.getElementById('channel-items');
+        var items = this.els.channelItems;
         if (!items) return;
 
         var self = this;

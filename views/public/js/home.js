@@ -8,12 +8,31 @@ class HomePage {
         this.watchHistory = ChannelUtils.loadWatchHistory();
         this.currentRecording = null;
 
+        this.els = {
+            contentLoading: document.getElementById('content-loading'),
+            favorites: document.getElementById('favorites'),
+            recent: document.getElementById('recent'),
+            categoriesView: document.getElementById('categories-view'),
+            channelsView: document.getElementById('channels-view'),
+            favoritesGrid: document.getElementById('favorites-grid'),
+            recentGrid: document.getElementById('recent-grid'),
+            categoriesGrid: document.getElementById('categories-grid'),
+            channelsGrid: document.getElementById('channels-grid'),
+            backNav: document.getElementById('back-nav'),
+            currentCategoryName: document.getElementById('current-category-name'),
+            channelsTitle: document.getElementById('channels-title'),
+            searchInput: document.getElementById('search-input'),
+            btnBack: document.getElementById('btn-back')
+        };
+
         this.init();
     }
 
     async init() {
+        this.showLoading();
         await this.loadData();
         await this.loadBufferStatus();
+        this.hideLoading();
         this.setupKeyboardEvents();
         this.setupSearch();
         this.setupNavigation();
@@ -22,6 +41,18 @@ class HomePage {
         this.renderFavorites();
         this.renderRecent();
         this.renderCategories();
+    }
+
+    showLoading() {
+        if (this.els.contentLoading) this.els.contentLoading.classList.remove('hidden');
+    }
+
+    hideLoading() {
+        if (this.els.contentLoading) this.els.contentLoading.classList.add('hidden');
+
+        this.els.favorites.classList.remove('hidden');
+        this.els.recent.classList.remove('hidden');
+        this.els.categoriesView.classList.remove('hidden');
     }
 
     setupPageShowHandler() {
@@ -124,7 +155,7 @@ class HomePage {
     }
 
     renderFavorites() {
-        var grid = document.getElementById('favorites-grid');
+        var grid = this.els.favoritesGrid;
         if (!grid) return;
 
         grid.innerHTML = '';
@@ -171,7 +202,7 @@ class HomePage {
     }
 
     renderRecent() {
-        var grid = document.getElementById('recent-grid');
+        var grid = this.els.recentGrid;
         if (!grid) return;
 
         var self = this;
@@ -256,7 +287,7 @@ class HomePage {
     }
 
     renderCategories() {
-        var grid = document.getElementById('categories-grid');
+        var grid = this.els.categoriesGrid;
         if (!grid) return;
 
         var self = this;
@@ -290,11 +321,11 @@ class HomePage {
             return ch.category === categoryName;
         });
 
-        document.getElementById('categories-view').classList.add('hidden');
-        document.getElementById('channels-view').classList.remove('hidden');
-        document.getElementById('back-nav').classList.remove('hidden');
-        document.getElementById('current-category-name').textContent = categoryName;
-        document.getElementById('channels-title').textContent = categoryName + ' - Channels';
+        this.els.categoriesView.classList.add('hidden');
+        this.els.channelsView.classList.remove('hidden');
+        this.els.backNav.classList.remove('hidden');
+        this.els.currentCategoryName.textContent = categoryName;
+        this.els.channelsTitle.textContent = categoryName + ' - Channels';
 
         this.renderChannels(catChannels);
 
@@ -306,13 +337,12 @@ class HomePage {
 
     showCategoriesView() {
         var categoryName = this.currentCategory;
-        var input = document.getElementById('search-input');
-        var wasInSearch = document.activeElement === input;
+        var wasInSearch = document.activeElement === this.els.searchInput;
 
         this.currentCategory = null;
-        document.getElementById('categories-view').classList.remove('hidden');
-        document.getElementById('channels-view').classList.add('hidden');
-        document.getElementById('back-nav').classList.add('hidden');
+        this.els.categoriesView.classList.remove('hidden');
+        this.els.channelsView.classList.add('hidden');
+        this.els.backNav.classList.add('hidden');
 
         if (wasInSearch) {
             return;
@@ -333,7 +363,7 @@ class HomePage {
     }
 
     renderChannels(channelsList) {
-        var grid = document.getElementById('channels-grid');
+        var grid = this.els.channelsGrid;
         if (!grid) return;
 
         var channels = channelsList || this.channels;
@@ -365,9 +395,8 @@ class HomePage {
 
     setupNavigation() {
         var self = this;
-        var btnBack = document.getElementById('btn-back');
-        if (btnBack) {
-            btnBack.addEventListener('click', function () {
+        if (this.els.btnBack) {
+            this.els.btnBack.addEventListener('click', function () {
                 self.showCategoriesView();
             });
         }
@@ -375,13 +404,12 @@ class HomePage {
 
     setupSearch() {
         var self = this;
-        var input = document.getElementById('search-input');
-        if (!input) return;
+        if (!this.els.searchInput) return;
 
-        input.addEventListener('input', function () {
+        this.els.searchInput.addEventListener('input', function () {
             clearTimeout(self.searchTimeout);
             self.searchTimeout = setTimeout(function () {
-                self.performSearch(input.value);
+                self.performSearch(self.els.searchInput.value);
             }, UIConstants.SEARCH_DEBOUNCE);
         });
     }
@@ -397,11 +425,11 @@ class HomePage {
             return ch.name.toLowerCase().indexOf(query.toLowerCase()) !== -1;
         });
 
-        document.getElementById('categories-view').classList.add('hidden');
-        document.getElementById('channels-view').classList.remove('hidden');
-        document.getElementById('back-nav').classList.remove('hidden');
-        document.getElementById('current-category-name').textContent = Messages.SEARCH_PREFIX + ' ' + query;
-        document.getElementById('channels-title').textContent = Messages.SEARCH_RESULTS;
+        this.els.categoriesView.classList.add('hidden');
+        this.els.channelsView.classList.remove('hidden');
+        this.els.backNav.classList.remove('hidden');
+        this.els.currentCategoryName.textContent = Messages.SEARCH_PREFIX + ' ' + query;
+        this.els.channelsTitle.textContent = Messages.SEARCH_RESULTS;
 
         this.renderChannels(filtered.slice(0, 100));
     }
@@ -422,8 +450,7 @@ class HomePage {
     handleDigitKey(e) {
         if (e.key < '1' || e.key > '9') return false;
         var idx = parseInt(e.key) - 1;
-        var input = document.getElementById('search-input');
-        if (this.favorites[idx] && !(document.activeElement === input && input.value.length > 0)) {
+        if (this.favorites[idx] && !(document.activeElement === this.els.searchInput && this.els.searchInput.value.length > 0)) {
             e.preventDefault();
             this.playChannel(this.favorites[idx]);
         }
@@ -432,29 +459,27 @@ class HomePage {
 
     handleBackKey(e) {
         if (e.key !== PCKeyCodes.ESCAPE && e.keyCode !== TVKeyCodes.BACK) return false;
-        var input = document.getElementById('search-input');
         if (this.currentCategory) {
             this.showCategoriesView();
-        } else if (document.activeElement === input) {
-            input.value = '';
-            input.blur();
+        } else if (document.activeElement === this.els.searchInput) {
+            this.els.searchInput.value = '';
+            this.els.searchInput.blur();
         }
         return true;
     }
 
     handleSearchEnter(e) {
         if (e.key !== PCKeyCodes.ENTER && e.key !== PCKeyCodes.OK) return false;
-        var input = document.getElementById('search-input');
-        if (document.activeElement !== input) return false;
+        if (document.activeElement !== this.els.searchInput) return false;
         e.preventDefault();
-        if (input.value.length >= 2) {
+        if (this.els.searchInput.value.length >= 2) {
             var firstChannel = document.querySelector('.channel-item');
             if (firstChannel) {
                 firstChannel.focus();
                 firstChannel.scrollIntoView({behavior: 'smooth', block: 'center'});
             }
         } else {
-            input.blur();
+            this.els.searchInput.blur();
         }
         return true;
     }
@@ -489,11 +514,11 @@ class HomePage {
     }
 
     handleLetterToSearch(e) {
-        if (document.activeElement === document.getElementById('search-input')) return false;
+        if (document.activeElement === this.els.searchInput) return false;
         if (e.key.length !== 1 || e.ctrlKey || e.metaKey) return false;
         var code = e.key.charCodeAt(0);
         if ((code >= 65 && code <= 90) || (code >= 97 && code <= 122)) {
-            document.getElementById('search-input').focus();
+            this.els.searchInput.focus();
             return true;
         }
         return false;
@@ -525,12 +550,10 @@ class HomePage {
         var arrowKeys = [PCKeyCodes.ARROW_UP, PCKeyCodes.ARROW_DOWN, PCKeyCodes.ARROW_LEFT, PCKeyCodes.ARROW_RIGHT];
         if (arrowKeys.indexOf(e.key) === -1) return false;
 
-        var input = document.getElementById('search-input');
-
-        if (document.activeElement === input) {
+        if (document.activeElement === this.els.searchInput) {
             if (e.key === PCKeyCodes.ARROW_DOWN) {
                 e.preventDefault();
-                var target = input.value.length >= 2
+                var target = this.els.searchInput.value.length >= 2
                     ? document.querySelector('.channel-item')
                     : document.querySelector('.favorite-item:not(.empty)');
                 if (target) {
@@ -610,8 +633,7 @@ class HomePage {
                     }
                 }
                 if (gi < 0) {
-                    var searchInput = document.getElementById('search-input');
-                    if (searchInput) { searchInput.focus(); return true; }
+                    if (this.els.searchInput) { this.els.searchInput.focus(); return true; }
                     target = idx;
                 }
             }
