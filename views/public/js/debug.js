@@ -53,9 +53,9 @@
         }) : 'N/A';
 
         els.debugBuildInfo.innerHTML =
-            '<span class="debug-build-label">Branch:</span> <span class="debug-build-value">' + escapeHtml(buildInfo.branch) + '</span> | ' +
-            '<span class="debug-build-label">Commit:</span> <span class="debug-build-value">' + escapeHtml(buildInfo.commit) + '</span> | ' +
-            '<span class="debug-build-label">Build:</span> <span class="debug-build-value">' + escapeHtml(buildTime) + '</span>';
+            '<span class="debug-build-label">Branch:</span> <span class="debug-build-value">' + ChannelUtils.escapeHtml(buildInfo.branch) + '</span> | ' +
+            '<span class="debug-build-label">Commit:</span> <span class="debug-build-value">' + ChannelUtils.escapeHtml(buildInfo.commit) + '</span> | ' +
+            '<span class="debug-build-label">Build:</span> <span class="debug-build-value">' + ChannelUtils.escapeHtml(buildTime) + '</span>';
     }
 
     function logKeyEvent(e) {
@@ -84,8 +84,8 @@
         els.debugKeyEvents.innerHTML = keyEvents.map(function (e) {
             return '<div class="debug-event-item">' +
                 '<span class="debug-event-time">[' + e.time + ']</span> ' +
-                '<span class="debug-event-key">key: "' + escapeHtml(e.key) + '"</span> | ' +
-                '<span class="debug-event-code">code: "' + escapeHtml(e.code) + '"</span> | ' +
+                '<span class="debug-event-key">key: "' + ChannelUtils.escapeHtml(e.key) + '"</span> | ' +
+                '<span class="debug-event-code">code: "' + ChannelUtils.escapeHtml(e.code) + '"</span> | ' +
                 '<span class="debug-event-which">keyCode: ' + e.keyCode + '</span>' +
                 (e.ctrlKey ? ' [Ctrl]' : '') +
                 (e.shiftKey ? ' [Shift]' : '') +
@@ -95,11 +95,6 @@
         }).reverse().join('');
     }
 
-    function escapeHtml(text) {
-        var div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
 
     if (!window._debugConsolePatched) {
         window._debugConsolePatched = true;
@@ -168,7 +163,7 @@
             els.debugLogs.innerHTML = logs.map(function (log) {
                 return '<div class="debug-log-item">' +
                     '<span class="debug-log-time">[' + log.time + ']</span> ' +
-                    '<span class="debug-log-' + log.type + '">' + escapeHtml(log.message) + '</span>' +
+                    '<span class="debug-log-' + log.type + '">' + ChannelUtils.escapeHtml(log.message) + '</span>' +
                     '</div>';
             }).reverse().join('');
         };
