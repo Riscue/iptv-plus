@@ -1246,7 +1246,7 @@ class IPTVPlayer {
         this.channels.forEach(function (ch) {
             catSet[ch.category] = true;
         });
-        return Object.keys(catSet).sort();
+        return Object.keys(catSet);
     }
 
     renderChannelList(filter) {

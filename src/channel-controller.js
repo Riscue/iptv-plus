@@ -126,8 +126,7 @@ class ChannelController {
             });
 
             categories = Array.from(channelMap.keys())
-                .filter(cat => channelMap.get(cat).length > 0)
-                .sort();
+                .filter(cat => channelMap.get(cat).length > 0);
 
             logger.log('PLAYLIST', 'Loaded ' + channelsCache.length + ' channels in ' + categories.length + ' categories');
 
