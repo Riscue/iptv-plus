@@ -33,13 +33,6 @@ const TVKeyCodes = {
     BLUE: 406,
 
     BACK: 461,
-
-    CHANNEL_UP: 427, // ?
-    CHANNEL_DOWN: 428, // ?
-
-    PLAY: 415, // ?
-    PAUSE: 19, // ?
-    STOP: 413, // ?
 };
 
 const TimeConstants = {

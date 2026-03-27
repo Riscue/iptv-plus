@@ -945,11 +945,11 @@ class IPTVPlayer {
             }
         }
 
-        if (e.keyCode === TVKeyCodes.CHANNEL_UP || e.keyCode === PCKeyCodes.PAGE_UP) {
+        if (e.keyCode === PCKeyCodes.PAGE_UP) {
             e.preventDefault();
             this.channelUp();
         }
-        if (e.keyCode === TVKeyCodes.CHANNEL_DOWN || e.keyCode === PCKeyCodes.PAGE_DOWN) {
+        if (e.keyCode === PCKeyCodes.PAGE_DOWN) {
             e.preventDefault();
             this.channelDown();
         }
