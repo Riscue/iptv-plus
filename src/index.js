@@ -19,18 +19,24 @@ const app = express();
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
+function asyncHandler(fn) {
+    return function (req, res, next) {
+        Promise.resolve(fn(req, res, next)).catch(next);
+    };
+}
+
 app.use('/buffer', express.static(bufferDir));
 
 app.use('/public', express.static(path.join(__dirname, '../views/public')));
 
-app.get('/api/channels', ChannelController.getChannelList);
-app.get('/api/categories', ChannelController.getCategories);
-app.get('/api/channels/search', ChannelController.searchChannels);
-app.get('/api/channel/current', ChannelController.getCurrentChannel);
-app.get('/api/channel/change', ChannelController.changeChannel);
-app.get('/api/buffer/status', BufferController.getStatus);
-app.get('/api/buffer/heartbeat', BufferController.heartbeat);
-app.post('/api/buffer/stop', BufferController.stop);
+app.get('/api/channels', asyncHandler(ChannelController.getChannelList));
+app.get('/api/categories', asyncHandler(ChannelController.getCategories));
+app.get('/api/channels/search', asyncHandler(ChannelController.searchChannels));
+app.get('/api/channel/current', asyncHandler(ChannelController.getCurrentChannel));
+app.get('/api/channel/change', asyncHandler(ChannelController.changeChannel));
+app.get('/api/buffer/status', asyncHandler(BufferController.getStatus));
+app.get('/api/buffer/heartbeat', asyncHandler(BufferController.heartbeat));
+app.post('/api/buffer/stop', asyncHandler(BufferController.stop));
 
 app.get('/api/build-info', (req, res) => {
     try {
@@ -54,6 +60,11 @@ app.get('/player', (req, res) => {
 
 app.get('/favicon.ico', (req, res) => {
     res.status(204).end();
+});
+
+app.use((err, req, res, next) => {
+    logger.error('SERVER', 'Unhandled error:', err.message);
+    res.status(500).json({error: err.message});
 });
 
 process.on('SIGTERM', async () => {
