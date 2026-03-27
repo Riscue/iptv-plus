@@ -23,6 +23,9 @@ class IPTVPlayer {
 
         this.indicatorPriority = IndicatorPriority;
 
+        this.timeDisplayInterval = null;
+        this.heartbeatInterval = null;
+
         this.els = {
             app: document.getElementById('app'),
             video: document.getElementById('video'),
@@ -53,7 +56,7 @@ class IPTVPlayer {
         this.setupAllListeners();
 
         var self = this;
-        setInterval(function () {
+        this.timeDisplayInterval = setInterval(function () {
             self.updateTimeDisplay();
         }, TimeConstants.SECOND);
 
@@ -649,7 +652,7 @@ class IPTVPlayer {
     }
 
     setupHeartbeat() {
-        setInterval(function () {
+        this.heartbeatInterval = setInterval(function () {
             fetch('/api/buffer/heartbeat', {
                 method: 'GET',
                 cache: 'no-cache',
@@ -1276,8 +1279,37 @@ class IPTVPlayer {
 
         this.bindChannelItemClick(items, '.channel-item');
     }
+
+    destroy() {
+        if (this.timeDisplayInterval) {
+            clearInterval(this.timeDisplayInterval);
+            this.timeDisplayInterval = null;
+        }
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+        }
+        if (this.idleTimer) {
+            clearTimeout(this.idleTimer);
+            this.idleTimer = null;
+        }
+        if (this.overlayTimer) {
+            clearTimeout(this.overlayTimer);
+            this.overlayTimer = null;
+        }
+        if (this.hls) {
+            this.hls.destroy();
+            this.hls = null;
+        }
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function () {
     window.player = new IPTVPlayer();
+
+    window.addEventListener('beforeunload', function () {
+        if (window.player) {
+            window.player.destroy();
+        }
+    });
 });
