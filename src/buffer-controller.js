@@ -41,11 +41,12 @@ class BufferController {
         const m3u8Path = path.join(channelPath, 'live.m3u8');
         const segmentPath = path.join(channelPath, '%08d.ts');
 
-        const ffmpegArgs = ['-user_agent', 'Mozilla/5.0', '-i', channel.url, '-c', 'copy', '-f', 'hls', '-hls_time', String(segmentDuration), '-hls_list_size', '0', '-hls_flags', 'delete_segments+append_list+independent_segments', '-hls_segment_filename', segmentPath, m3u8Path];
+        const maxSegments = Math.floor((bufferDurationMinutes * 60) / segmentDuration);
+        const ffmpegArgs = ['-user_agent', 'Mozilla/5.0', '-i', channel.url, '-c', 'copy', '-f', 'hls', '-hls_time', String(segmentDuration), '-hls_list_size', String(maxSegments), '-hls_flags', 'delete_segments+append_list+independent_segments', '-hls_segment_filename', segmentPath, m3u8Path];
 
         logger.log('BUFFER', 'Starting FFmpeg for channel:', channel.name);
         logger.log('BUFFER', 'URL:', channel.url);
-        logger.log('BUFFER', 'Output:', m3u8Path);
+        logger.log('BUFFER', 'Output:', m3u8Path, '| Max segments:', maxSegments, '(' + bufferDurationMinutes + ' min retention)');
 
         ffmpegProcess = spawn('ffmpeg', ffmpegArgs);
 
@@ -298,10 +299,10 @@ class BufferController {
             const files = fs.readdirSync(channelPath);
             const tsFiles = files.filter(f => f.endsWith('.ts')).sort();
 
-            const maxSegments = (bufferDurationMinutes * 60) / segmentDuration;
+            const maxSegments = Math.floor((bufferDurationMinutes * 60) / segmentDuration);
 
-            if (tsFiles.length > maxSegments) {
-                const toRemove = tsFiles.slice(0, tsFiles.length - Math.floor(maxSegments));
+            if (tsFiles.length > maxSegments + (3 * 60 / segmentDuration)) {
+                const toRemove = tsFiles.slice(0, tsFiles.length - maxSegments);
 
                 toRemove.forEach(file => {
                     const filePath = path.join(channelPath, file);
@@ -312,7 +313,7 @@ class BufferController {
                     }
                 });
 
-                logger.log('BUFFER', 'Cleaned up ' + toRemove.length + ' old segments (' + tsFiles.length + ' total)');
+                logger.log('BUFFER', 'Safety cleanup: removed ' + toRemove.length + ' orphaned segments');
             }
         } catch (err) {
             logger.error('BUFFER', 'Segment cleanup error:', err.message);
