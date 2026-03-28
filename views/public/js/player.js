@@ -751,8 +751,19 @@ class IPTVPlayer {
                     ? Math.min(currentIdx + 1, tabs.length - 1)
                     : Math.max(currentIdx - 1, 0);
                 this.switchTab(tabs[newIdx]);
-                var activeTab = document.querySelector('.list-tab.active');
-                if (activeTab) activeTab.focus();
+                var activeTabContent = document.querySelector('.tab-content:not(.hidden)');
+                var activeItem = activeTabContent
+                    ? activeTabContent.querySelector('.fav-item.active, .recent-list-item.active, .channel-item.active')
+                    : null;
+                if (activeItem) {
+                    activeItem.scrollIntoView({block: 'center'});
+                    activeItem.focus();
+                } else {
+                    var firstItem = activeTabContent
+                        ? activeTabContent.querySelector('.fav-item:not(.empty), .recent-list-item, .channel-item')
+                        : null;
+                    if (firstItem) firstItem.focus();
+                }
             }
             return true;
         }
@@ -779,7 +790,7 @@ class IPTVPlayer {
 
             var currentIndex = items.indexOf(document.activeElement);
             if (currentIndex === -1) {
-                var activeEl = document.querySelector('.channel-item.active');
+                var activeEl = activeTabContent.querySelector('.fav-item.active, .recent-list-item.active, .channel-item.active');
                 currentIndex = activeEl ? items.indexOf(activeEl) : 0;
             }
             var targetIndex = (e.keyCode === PCKeyCodes.ARROW_DOWN)
