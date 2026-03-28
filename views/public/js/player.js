@@ -170,6 +170,14 @@ class IPTVPlayer {
 
         this.els.video.addEventListener('playing', function () {
             self.hideIndicator(IndicatorTypes.LOADING);
+            if (!self.forceIdle) {
+                clearTimeout(self.idleTimer);
+                self.idleTimer = setTimeout(function () {
+                    if (!self.channelListVisible && !self.els.video.paused && self.plannedSeekPosition === null) {
+                        document.body.classList.add('idle');
+                    }
+                }, self.idleTimeout);
+            }
         });
 
         this.els.video.addEventListener('canplay', function () {
