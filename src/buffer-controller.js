@@ -113,7 +113,7 @@ class BufferController {
 
     static async stopBuffer() {
 
-        if (this.isRecording()) {
+        if (BufferController.isRecording()) {
             logger.log('BUFFER', 'Stopping recording:', currentChannelName);
             await BufferController.gracefulShutdown(ffmpegProcess);
             ffmpegProcess = null;
@@ -183,7 +183,7 @@ class BufferController {
     static async forceRecover() {
         logger.log('BUFFER', 'Force recovery initiated');
 
-        if (this.isRecording()) {
+        if (BufferController.isRecording()) {
             try {
                 await BufferController.gracefulShutdown(ffmpegProcess, forceRecoveryTimeout);
             } catch (err) {
@@ -229,9 +229,9 @@ class BufferController {
         }
 
         res.json({
-            isRecording: this.isRecording(),
+            isRecording: BufferController.isRecording(),
             currentChannel: currentChannelName,
-            recording: this.isRecording(),
+            recording: BufferController.isRecording(),
             segmentCount,
             totalSize,
             durationMinutes: segmentCount * segmentDuration / 60,
@@ -256,7 +256,7 @@ class BufferController {
     }
 
     static async checkActivity() {
-        if (!this.isRecording()) return;
+        if (!BufferController.isRecording()) return;
 
         const inactiveTime = Date.now() - lastActivity;
         if (inactiveTime > activityTimeout) {
@@ -269,7 +269,7 @@ class BufferController {
     static heartbeat(req, res) {
         BufferController.updateActivity();
         res.json({
-            isRecording: this.isRecording(),
+            isRecording: BufferController.isRecording(),
             currentChannel: currentChannelName
         });
     }
