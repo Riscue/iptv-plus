@@ -22,8 +22,17 @@ let cleanupInterval = null;
 let activityInterval = null;
 let lastActivity = Date.now();
 let bufferStartTime = null;
+let onStopCallback = null;
 
 class BufferController {
+
+    static isRecording() {
+        return ffmpegProcess !== null;
+    }
+
+    static setOnStop(callback) {
+        onStopCallback = callback;
+    }
 
     static getSafeName(name) {
         return name.replace(/[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_-]/g, '_');
@@ -104,7 +113,7 @@ class BufferController {
 
     static async stopBuffer() {
 
-        if (ffmpegProcess) {
+        if (this.isRecording()) {
             logger.log('BUFFER', 'Stopping recording:', currentChannelName);
             await BufferController.gracefulShutdown(ffmpegProcess);
             ffmpegProcess = null;
@@ -131,6 +140,7 @@ class BufferController {
 
         currentChannelName = null;
         bufferStartTime = null;
+        if (onStopCallback) onStopCallback();
         logger.log('BUFFER', 'Recording stopped');
     }
 
@@ -173,7 +183,7 @@ class BufferController {
     static async forceRecover() {
         logger.log('BUFFER', 'Force recovery initiated');
 
-        if (ffmpegProcess) {
+        if (this.isRecording()) {
             try {
                 await BufferController.gracefulShutdown(ffmpegProcess, forceRecoveryTimeout);
             } catch (err) {
@@ -199,7 +209,6 @@ class BufferController {
     }
 
     static getStatus(req, res) {
-        const isRecording = ffmpegProcess !== null;
         const channelPath = currentChannelName ? BufferController.getChannelBufferPath(currentChannelName) : null;
 
         let segmentCount = 0;
@@ -220,9 +229,9 @@ class BufferController {
         }
 
         res.json({
-            isRecording,
+            isRecording: this.isRecording(),
             currentChannel: currentChannelName,
-            recording: isRecording,
+            recording: this.isRecording(),
             segmentCount,
             totalSize,
             durationMinutes: segmentCount * segmentDuration / 60,
@@ -247,7 +256,7 @@ class BufferController {
     }
 
     static async checkActivity() {
-        if (!ffmpegProcess) return;
+        if (!this.isRecording()) return;
 
         const inactiveTime = Date.now() - lastActivity;
         if (inactiveTime > activityTimeout) {
@@ -260,7 +269,8 @@ class BufferController {
     static heartbeat(req, res) {
         BufferController.updateActivity();
         res.json({
-            isRecording: ffmpegProcess !== null, currentChannel: currentChannelName
+            isRecording: this.isRecording(),
+            currentChannel: currentChannelName
         });
     }
 

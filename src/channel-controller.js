@@ -14,6 +14,10 @@ let currentCategory = null;
 
 let playlistDownloadPromise = null;
 
+BufferController.setOnStop(() => {
+    currentChannel = null;
+});
+
 class ChannelController {
 
     static async downloadPlaylist() {
@@ -272,8 +276,9 @@ class ChannelController {
 
             currentCategory = targetChannel.category;
 
-            if (currentChannel && currentChannel.name === targetChannel.name) {
-                logger.log('CHANNEL', 'Same channel requested, skipping restart');
+            if (currentChannel && currentChannel.name === targetChannel.name && BufferController.isRecording()) {
+                logger.log('CHANNEL', 'Same channel requested, resetting activity timer');
+                BufferController.updateActivity();
                 return res.json({
                     current: currentChannel,
                     index: channelIndex,
