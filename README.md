@@ -147,6 +147,13 @@ docker run -d \
 | `/api/buffer/stop`      | POST   | Stop recording                   |
 | `/api/build-info`       | GET    | Get build version info           |
 
+## Known Bugs
+
+- **Focus issue on TV**: On initial launch and after exiting fullscreen, key mappings don't work until the user clicks
+  somewhere on the screen to regain focus.
+- **Media keys not working on TV**: Hardware media keys (play, pause, etc.) are unresponsive on TV devices.
+- **Codec support**: Some video codecs are not supported, causing playback failures on certain channels.
+
 ## License
 
 MIT © [Riscue](https://github.com/riscue)
