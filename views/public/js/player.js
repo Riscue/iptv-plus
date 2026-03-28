@@ -55,6 +55,7 @@ class IPTVPlayer {
         this.checkCodecSupport();
         await this.loadChannels();
         this.setupAllListeners();
+        document.body.focus();
 
         var self = this;
         this.timeDisplayInterval = setInterval(function () {
@@ -591,7 +592,10 @@ class IPTVPlayer {
         var elem = this.els.app;
 
         if (window.webOS && webOS.window && webOS.window.setFullScreen) {
-            webOS.window.setFullScreen(true);
+            var self = this;
+            webOS.window.setFullScreen(true, function () {
+                setTimeout(function () { self.els.app.focus(); }, 100);
+            });
             return;
         }
 
