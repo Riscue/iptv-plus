@@ -44,7 +44,7 @@
     function renderBuildInfo() {
         if (!els.debugBuildInfo || !buildInfo) return;
 
-        var buildTime = buildInfo.buildDate ? new Date(buildInfo.buildDate).toLocaleString('en-US', {
+        var buildTime = buildInfo.buildDate ? new Date(buildInfo.buildDate).toLocaleString('tr-TR', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
@@ -68,7 +68,7 @@
             shiftKey: e.shiftKey,
             altKey: e.altKey,
             metaKey: e.metaKey,
-            time: new Date().toLocaleTimeString()
+            time: new Date().toLocaleTimeString('tr-TR')
         };
 
         keyEvents.push(eventInfo);
@@ -120,7 +120,7 @@
             logs.push({
                 type: type,
                 message: message,
-                time: new Date().toLocaleTimeString()
+                time: new Date().toLocaleTimeString('tr-TR')
             });
 
             if (logs.length > maxLogs) {
