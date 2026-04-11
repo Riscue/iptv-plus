@@ -23,6 +23,9 @@ let activityInterval = null;
 let lastActivity = Date.now();
 let bufferStartTime = null;
 let onStopCallback = null;
+let currentChannelUrl = null;
+let isStopping = false;
+let restartAttempts = 0;
 
 class BufferController {
 
@@ -43,6 +46,65 @@ class BufferController {
         return path.join(bufferDir, safeName);
     }
 
+    static getLastSegmentNumber(channelPath) {
+        if (!fs.existsSync(channelPath)) return 0;
+
+        const files = fs.readdirSync(channelPath);
+        const tsFiles = files.filter(f => f.endsWith('.ts'));
+
+        if (tsFiles.length === 0) return 0;
+
+        const numbers = tsFiles
+            .map(f => parseInt(f.replace('.ts', ''), 10))
+            .filter(n => !isNaN(n));
+
+        return numbers.length > 0 ? Math.max(...numbers) : 0;
+    }
+
+    static removeEndList(m3u8Path) {
+        if (!fs.existsSync(m3u8Path)) return;
+
+        try {
+            const content = fs.readFileSync(m3u8Path, 'utf-8');
+            if (content.includes('#EXT-X-ENDLIST')) {
+                fs.writeFileSync(m3u8Path, content.replace(/#EXT-X-ENDLIST\s*/g, ''));
+                logger.log('BUFFER', 'Removed #EXT-X-ENDLIST from m3u8');
+            }
+        } catch (err) {
+            logger.error('BUFFER', 'Failed to remove endlist:', err.message);
+        }
+    }
+
+    static async autoRestart() {
+        if (isStopping || !currentChannelName || !currentChannelUrl) return;
+
+        restartAttempts++;
+        if (restartAttempts > maxRetriesConstant) {
+            logger.error('BUFFER', 'Max restart attempts reached (' + maxRetriesConstant + '), giving up');
+            return;
+        }
+
+        const delay = retryBaseDelay * Math.pow(2, restartAttempts - 1);
+        logger.log('BUFFER', 'Auto-restart attempt ' + restartAttempts + '/' + maxRetriesConstant + ' in ' + delay + 'ms...');
+
+        await new Promise(resolve => setTimeout(resolve, delay));
+
+        if (isStopping || !currentChannelName) return;
+
+        const channelPath = BufferController.getChannelBufferPath(currentChannelName);
+        const m3u8Path = path.join(channelPath, 'live.m3u8');
+
+        BufferController.removeEndList(m3u8Path);
+
+        try {
+            await BufferController.startBuffer({name: currentChannelName, url: currentChannelUrl});
+            restartAttempts = 0;
+            logger.log('BUFFER', 'Auto-restart successful');
+        } catch (err) {
+            logger.error('BUFFER', 'Auto-restart failed:', err.message);
+        }
+    }
+
     static async startBuffer(channel) {
         const channelPath = BufferController.getChannelBufferPath(channel.name);
         fs.mkdirSync(channelPath, {recursive: true});
@@ -51,7 +113,25 @@ class BufferController {
         const segmentPath = path.join(channelPath, '%08d.ts');
 
         const maxSegments = Math.floor((bufferDurationMinutes * 60) / segmentDuration);
-        const ffmpegArgs = ['-user_agent', 'Mozilla/5.0', '-i', channel.url, '-c', 'copy', '-f', 'hls', '-hls_time', String(segmentDuration), '-hls_list_size', String(maxSegments), '-hls_flags', 'delete_segments+append_list+independent_segments', '-hls_segment_filename', segmentPath, m3u8Path];
+        const lastSegmentNumber = BufferController.getLastSegmentNumber(channelPath);
+
+        const ffmpegArgs = [
+            '-user_agent', 'Mozilla/5.0',
+            '-i', channel.url,
+            '-c', 'copy',
+            '-f', 'hls',
+            '-hls_time', String(segmentDuration),
+            '-hls_list_size', String(maxSegments),
+            '-hls_flags', 'delete_segments+append_list+independent_segments',
+            '-hls_segment_filename', segmentPath,
+        ];
+
+        if (lastSegmentNumber > 0) {
+            ffmpegArgs.push('-hls_start_number', String(lastSegmentNumber + 1));
+            logger.log('BUFFER', 'Continuing from segment:', lastSegmentNumber + 1);
+        }
+
+        ffmpegArgs.push(m3u8Path);
 
         logger.log('BUFFER', 'Starting FFmpeg for channel:', channel.name);
         logger.log('BUFFER', 'URL:', channel.url);
@@ -70,18 +150,25 @@ class BufferController {
             }
         });
 
-        ffmpegProcess.on('exit', (code, signal) => {
-            if (signal === 'SIGTERM' || signal === 'SIGINT') {
+        ffmpegProcess.on('exit', async (code, signal) => {
+            ffmpegProcess = null;
+
+            if (isStopping || signal === 'SIGTERM' || signal === 'SIGINT') {
                 logger.log('BUFFER', 'FFmpeg stopped by user');
             } else if (code === 0) {
-                logger.log('BUFFER', 'FFmpeg exited normally');
+                logger.log('BUFFER', 'FFmpeg exited normally, attempting auto-restart...');
+                await BufferController.autoRestart();
             } else {
-                logger.log('BUFFER', 'FFmpeg exited - code:', code, 'signal:', signal);
+                logger.log('BUFFER', 'FFmpeg crashed (code:', code, '), attempting auto-restart...');
+                await BufferController.autoRestart();
             }
         });
 
         currentChannelName = channel.name;
-        bufferStartTime = Date.now();
+        currentChannelUrl = channel.url;
+        if (!bufferStartTime) {
+            bufferStartTime = Date.now();
+        }
         BufferController.updateActivity();
         BufferController.startCleanup();
 
@@ -112,6 +199,7 @@ class BufferController {
     }
 
     static async stopBuffer() {
+        isStopping = true;
 
         if (BufferController.isRecording()) {
             logger.log('BUFFER', 'Stopping recording:', currentChannelName);
@@ -139,9 +227,12 @@ class BufferController {
         }
 
         currentChannelName = null;
+        currentChannelUrl = null;
         bufferStartTime = null;
+        restartAttempts = 0;
         if (onStopCallback) onStopCallback();
         logger.log('BUFFER', 'Recording stopped');
+        isStopping = false;
     }
 
     static async gracefulShutdown(childProcess, timeoutMs = gracefulShutdownTimeout) {
@@ -182,6 +273,7 @@ class BufferController {
 
     static async forceRecover() {
         logger.log('BUFFER', 'Force recovery initiated');
+        isStopping = true;
 
         if (BufferController.isRecording()) {
             try {
@@ -198,11 +290,14 @@ class BufferController {
             logger.error('BUFFER', 'Failed to cleanup orphaned processes:', err.message);
         }
 
+        restartAttempts = 0;
+        isStopping = false;
         logger.log('BUFFER', 'Force recovery completed');
     }
 
     static async changeChannel(newChannel) {
         BufferController.updateActivity();
+        restartAttempts = 0;
         logger.log('BUFFER', 'Changing channel:', currentChannelName, '->', newChannel.name);
         await BufferController.stopBuffer();
         return await BufferController.startBufferWithRetry(newChannel);
