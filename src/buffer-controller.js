@@ -26,6 +26,7 @@ let onStopCallback = null;
 let currentChannelUrl = null;
 let isStopping = false;
 let restartAttempts = 0;
+let restartResetTimer = null;
 
 class BufferController {
 
@@ -98,7 +99,6 @@ class BufferController {
 
         try {
             await BufferController.startBuffer({name: currentChannelName, url: currentChannelUrl});
-            restartAttempts = 0;
             logger.log('BUFFER', 'Auto-restart successful');
         } catch (err) {
             logger.error('BUFFER', 'Auto-restart failed:', err.message);
@@ -127,7 +127,7 @@ class BufferController {
         ];
 
         if (lastSegmentNumber > 0) {
-            ffmpegArgs.push('-hls_start_number', String(lastSegmentNumber + 1));
+            ffmpegArgs.push('-start_number', String(lastSegmentNumber + 1));
             logger.log('BUFFER', 'Continuing from segment:', lastSegmentNumber + 1);
         }
 
@@ -172,6 +172,14 @@ class BufferController {
         BufferController.updateActivity();
         BufferController.startCleanup();
 
+        if (restartResetTimer) clearTimeout(restartResetTimer);
+        restartResetTimer = setTimeout(() => {
+            if (BufferController.isRecording()) {
+                restartAttempts = 0;
+                logger.log('BUFFER', 'Stream stable, restart attempts reset');
+            }
+        }, 30000);
+
         logger.log('BUFFER', 'Recording started for:', channel.name);
         return m3u8Path;
     }
@@ -200,6 +208,11 @@ class BufferController {
 
     static async stopBuffer() {
         isStopping = true;
+
+        if (restartResetTimer) {
+            clearTimeout(restartResetTimer);
+            restartResetTimer = null;
+        }
 
         if (BufferController.isRecording()) {
             logger.log('BUFFER', 'Stopping recording:', currentChannelName);
