@@ -47,21 +47,6 @@ class BufferController {
         return path.join(bufferDir, safeName);
     }
 
-    static getLastSegmentNumber(m3u8Path) {
-        if (!fs.existsSync(m3u8Path)) return 0;
-
-        try {
-            const content = fs.readFileSync(m3u8Path, 'utf-8');
-            const matches = content.match(/(\d+)\.ts/g);
-            if (!matches || matches.length === 0) return 0;
-
-            const numbers = matches.map(m => parseInt(m, 10));
-            return Math.max(...numbers);
-        } catch (err) {
-            return 0;
-        }
-    }
-
     static removeEndList(m3u8Path) {
         if (!fs.existsSync(m3u8Path)) return;
 
@@ -113,7 +98,6 @@ class BufferController {
         const segmentPath = path.join(channelPath, '%08d.ts');
 
         const maxSegments = Math.floor((bufferDurationMinutes * 60) / segmentDuration);
-        const lastSegmentNumber = BufferController.getLastSegmentNumber(m3u8Path);
 
         const ffmpegArgs = [
             '-user_agent', 'Mozilla/5.0',
@@ -124,14 +108,8 @@ class BufferController {
             '-hls_list_size', String(maxSegments),
             '-hls_flags', 'delete_segments+append_list+independent_segments',
             '-hls_segment_filename', segmentPath,
+            m3u8Path
         ];
-
-        if (lastSegmentNumber > 0) {
-            ffmpegArgs.push('-start_number', String(lastSegmentNumber + 1));
-            logger.log('BUFFER', 'Continuing from segment:', lastSegmentNumber + 1);
-        }
-
-        ffmpegArgs.push(m3u8Path);
 
         logger.log('BUFFER', 'Starting FFmpeg for channel:', channel.name);
         logger.log('BUFFER', 'URL:', channel.url);
