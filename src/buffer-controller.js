@@ -47,19 +47,19 @@ class BufferController {
         return path.join(bufferDir, safeName);
     }
 
-    static getLastSegmentNumber(channelPath) {
-        if (!fs.existsSync(channelPath)) return 0;
+    static getLastSegmentNumber(m3u8Path) {
+        if (!fs.existsSync(m3u8Path)) return 0;
 
-        const files = fs.readdirSync(channelPath);
-        const tsFiles = files.filter(f => f.endsWith('.ts'));
+        try {
+            const content = fs.readFileSync(m3u8Path, 'utf-8');
+            const matches = content.match(/(\d+)\.ts/g);
+            if (!matches || matches.length === 0) return 0;
 
-        if (tsFiles.length === 0) return 0;
-
-        const numbers = tsFiles
-            .map(f => parseInt(f.replace('.ts', ''), 10))
-            .filter(n => !isNaN(n));
-
-        return numbers.length > 0 ? Math.max(...numbers) : 0;
+            const numbers = matches.map(m => parseInt(m, 10));
+            return Math.max(...numbers);
+        } catch (err) {
+            return 0;
+        }
     }
 
     static removeEndList(m3u8Path) {
@@ -113,7 +113,7 @@ class BufferController {
         const segmentPath = path.join(channelPath, '%08d.ts');
 
         const maxSegments = Math.floor((bufferDurationMinutes * 60) / segmentDuration);
-        const lastSegmentNumber = BufferController.getLastSegmentNumber(channelPath);
+        const lastSegmentNumber = BufferController.getLastSegmentNumber(m3u8Path);
 
         const ffmpegArgs = [
             '-user_agent', 'Mozilla/5.0',
