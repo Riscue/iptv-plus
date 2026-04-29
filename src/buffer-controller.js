@@ -106,7 +106,7 @@ class BufferController {
             '-f', 'hls',
             '-hls_time', String(segmentDuration),
             '-hls_list_size', String(maxSegments),
-            '-hls_flags', 'delete_segments+append_list+independent_segments',
+            '-hls_flags', 'delete_segments+append_list+independent_segments+discont_start',
             '-hls_segment_filename', segmentPath,
             m3u8Path
         ];
