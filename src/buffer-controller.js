@@ -21,6 +21,7 @@ let currentChannelName = null;
 let cleanupInterval = null;
 let activityInterval = null;
 let lastActivity = Date.now();
+let activityTimeoutMs = activityTimeout;
 let bufferStartTime = null;
 let onStopCallback = null;
 let currentChannelUrl = null;
@@ -144,6 +145,7 @@ class BufferController {
 
         currentChannelName = channel.name;
         currentChannelUrl = channel.url;
+        activityTimeoutMs = activityTimeout;
         if (!bufferStartTime) {
             bufferStartTime = Date.now();
         }
@@ -345,7 +347,7 @@ class BufferController {
         if (!BufferController.isRecording()) return;
 
         const inactiveTime = Date.now() - lastActivity;
-        if (inactiveTime > activityTimeout) {
+        if (inactiveTime > activityTimeoutMs) {
             const inactiveMinutes = Math.floor(inactiveTime / 60000);
             logger.log('BUFFER', 'No activity for ' + inactiveMinutes + ' minutes, stopping recording');
             await BufferController.stopBuffer();
@@ -358,6 +360,15 @@ class BufferController {
             isRecording: BufferController.isRecording(),
             currentChannel: currentChannelName
         });
+    }
+
+    static setTimeout(req, res) {
+        const timeout = parseInt(req.query.timeout);
+        if (timeout && timeout > 0) {
+            activityTimeoutMs = timeout;
+            logger.log('BUFFER', 'Timeout set to ' + Math.floor(timeout / 60000) + ' minutes');
+        }
+        res.json({success: true, timeout: activityTimeoutMs});
     }
 
     static async stop(req, res) {

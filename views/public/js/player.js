@@ -44,6 +44,7 @@ class IPTVPlayer {
             searchInput: document.getElementById('search-input'),
             tabFavorites: document.getElementById('tab-favorites'),
             tabRecent: document.getElementById('tab-recent'),
+            settingsPanel: document.getElementById('settings-panel'),
             categoryTabs: document.getElementById('category-tabs'),
             channelItems: document.getElementById('channel-items'),
         };
@@ -588,6 +589,14 @@ class IPTVPlayer {
         }
     }
 
+    toggleSettings(show) {
+        var panel = this.els.settingsPanel;
+        if (show === undefined) {
+            show = panel.classList.contains('hidden');
+        }
+        panel.classList.toggle('hidden', !show);
+    }
+
     toggleFullscreen() {
         var elem = this.els.app;
 
@@ -719,6 +728,9 @@ class IPTVPlayer {
             if (self.channelListVisible)
                 if (self.handleChannelListKeys(e)) return;
 
+            if (!self.els.settingsPanel.classList.contains('hidden'))
+                if (self.handleSettingsKeys(e)) return;
+
             if (self.handleIdleKeys(e)) return;
             self.handleControlBarKeys(e);
             self.handleTvSpecialKeys(e);
@@ -829,6 +841,41 @@ class IPTVPlayer {
         if (e.keyCode === PCKeyCodes.ESCAPE || e.keyCode === TVKeyCodes.BACK || e.keyCode === TVKeyCodes.BLUE) {
             e.preventDefault();
             this.toggleChannelList(false);
+            return true;
+        }
+
+        return true;
+    }
+
+    handleSettingsKeys(e) {
+        if (e.keyCode === PCKeyCodes.ESCAPE || e.keyCode === TVKeyCodes.BACK) {
+            e.preventDefault();
+            this.toggleSettings(false);
+            return true;
+        }
+
+        if (e.keyCode === PCKeyCodes.ARROW_UP || e.keyCode === PCKeyCodes.ARROW_DOWN) {
+            e.preventDefault();
+            var timeoutBtns = Array.from(document.querySelectorAll('.timeout-btn'));
+            if (timeoutBtns.length === 0) return true;
+
+            var currentIndex = timeoutBtns.indexOf(document.activeElement);
+            if (currentIndex === -1) currentIndex = 0;
+
+            var targetIndex = (e.keyCode === PCKeyCodes.ARROW_DOWN)
+                ? Math.min(currentIndex + 1, timeoutBtns.length - 1)
+                : Math.max(currentIndex - 1, 0);
+
+            timeoutBtns[targetIndex].focus();
+            return true;
+        }
+
+        if (e.keyCode === PCKeyCodes.ENTER) {
+            e.preventDefault();
+            var focused = document.activeElement;
+            if (focused && focused.classList.contains('timeout-btn')) {
+                focused.click();
+            }
             return true;
         }
 
@@ -1046,6 +1093,25 @@ class IPTVPlayer {
         });
         this.bindClick('btn-close-list', function () {
             self.toggleChannelList(false);
+        });
+        this.bindClick('btn-settings', function () {
+            self.toggleSettings();
+        });
+        this.bindClick('btn-close-settings', function () {
+            self.toggleSettings(false);
+        });
+
+        var timeoutBtns = document.querySelectorAll('.timeout-btn');
+        timeoutBtns.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var minutes = parseInt(btn.dataset.minutes);
+                timeoutBtns.forEach(function (b) {
+                    b.classList.remove('active');
+                });
+                btn.classList.add('active');
+                self.setActivityTimeout(minutes);
+                self.showIndicator(IndicatorTypes.LIVE);
+            });
         });
 
         if (this.els.searchInput) {
@@ -1310,6 +1376,11 @@ class IPTVPlayer {
         }).join('');
 
         this.bindChannelItemClick(items, '.channel-item');
+    }
+
+    setActivityTimeout(minutes) {
+        const ms = minutes === 0 ? 999999999 : minutes * 60 * 1000;
+        fetch('/api/buffer/set-timeout?timeout=' + ms);
     }
 
     destroy() {

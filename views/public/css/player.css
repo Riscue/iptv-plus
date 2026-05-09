@@ -214,6 +214,11 @@ body {
     margin-left: 10px;
 }
 
+.buttons {
+    display: flex;
+    gap: 1rem;
+}
+
 .icon-btn {
     width: 40px;
     height: 40px;
@@ -768,4 +773,69 @@ body.idle #video-overlay.active {
     background: rgba(255, 200, 50, 0.5) !important;
     border: 1px solid #ffc832 !important;
     box-shadow: 0 0 0 3px rgba(255, 200, 50, 0.5) !important;
+}
+
+#settings-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 400px;
+    max-width: 80%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    z-index: 100;
+    padding: 0;
+}
+
+.settings-content {
+    padding: 20px;
+    overflow-y: auto;
+    max-height: calc(100% - 60px);
+}
+
+.settings-section {
+    margin-bottom: 30px;
+}
+
+.settings-section h3 {
+    font-size: 18px;
+    margin-bottom: 10px;
+    color: #fff;
+}
+
+.settings-desc {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+.timeout-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.timeout-btn {
+    padding: 15px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.timeout-btn:hover,
+.timeout-btn:focus {
+    background: rgba(50, 100, 255, 0.3);
+    border-color: #3364ff;
+}
+
+.timeout-btn.active {
+    background: rgba(50, 100, 255, 0.5);
+    border-color: #3364ff;
 }

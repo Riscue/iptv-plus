@@ -23,10 +23,16 @@
             <span id="channel-name">Select Channel</span>
             <span id="channel-number"></span>
         </div>
-        <button id="btn-channels" class="top-btn blue-btn" tabindex="0">
-            <img src="/public/images/icons/menu.svg" class="svg-icon" alt="">
-            Channels
-        </button>
+        <div class="buttons">
+            <button id="btn-settings" class="top-btn" tabindex="0">
+                <img src="/public/images/icons/settings.svg" class="svg-icon" alt="">
+                Ayar
+            </button>
+            <button id="btn-channels" class="top-btn blue-btn" tabindex="0">
+                <img src="/public/images/icons/menu.svg" class="svg-icon" alt="">
+                Channels
+            </button>
+        </div>
     </div>
 
     <div id="channel-list" class="hidden">
@@ -49,6 +55,29 @@
         <div id="tab-recent" class="tab-content hidden"></div>
         <div id="tab-all" class="tab-content hidden">
             <div id="channel-items"></div>
+        </div>
+    </div>
+
+    <div id="settings-panel" class="hidden">
+        <div class="list-header">
+            <span>Ayarlar</span>
+            <button id="btn-close-settings" class="close-btn">
+                <img src="/public/images/icons/close.svg" class="svg-icon" alt="">
+            </button>
+        </div>
+        <div class="settings-content">
+            <div class="settings-section">
+                <h3>Otomatik Durdurma</h3>
+                <p class="settings-desc">İzleme yapmazsanız kayıt şu süre sonra durur:</p>
+                <div class="timeout-options">
+                    <button class="timeout-btn" data-minutes="5">5 dakika</button>
+                    <button class="timeout-btn" data-minutes="15">15 dakika</button>
+                    <button class="timeout-btn" data-minutes="30">30 dakika</button>
+                    <button class="timeout-btn" data-minutes="60">1 saat</button>
+                    <button class="timeout-btn" data-minutes="120">2 saat</button>
+                    <button class="timeout-btn" data-minutes="0">Hiçbir zaman</button>
+                </div>
+            </div>
         </div>
     </div>
 
