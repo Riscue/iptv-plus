@@ -23,6 +23,14 @@ const Messages = {
     MANIFEST_LOAD_TIMEOUT: 'Manifest failed to load - Recovering',
     PLAYBACK_ERROR_RECOVERING: 'Playback error - Recovering',
 
+    SOURCE_RETRYING: 'Source connection lost - Retrying',
+    SOURCE_RECONNECTING: 'Reconnecting to source',
+    ATTEMPT: 'attempt',
+    RECORDING_FAILED: 'Recording failed - Returning to Home',
+    RECORDING_STOPPED: 'Recording stopped on server - Returning to Home',
+    CHANNELS_FAILED_TO_LOAD: 'Channel list could not be loaded',
+    CHANNEL_START_FAILED: 'Could not start channel',
+
     LIVE: 'LIVE',
     ERROR: 'Error',
     RECORDING: 'Recording',

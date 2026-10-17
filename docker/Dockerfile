@@ -1,4 +1,4 @@
-FROM node:25-slim
+FROM node:26-slim
 
 RUN apt update && \
     apt install -y --no-install-recommends \
@@ -6,6 +6,8 @@ RUN apt update && \
         procps \
         git && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+ENV TZ=Europe/Istanbul
 
 WORKDIR /app
 

@@ -10,9 +10,9 @@ const {
     cleanupInterval: cleanupIntervalMs,
     gracefulShutdownTimeout,
     forceKillTimeout,
-    forceRecoveryTimeout,
     retryBaseDelay,
-    maxRetries: maxRetriesConstant
+    retryMaxDelay,
+    inputReadTimeout
 } = require('./constants');
 const logger = require('./logger');
 
@@ -25,11 +25,23 @@ let activityTimeoutMs = activityTimeout;
 let bufferStartTime = null;
 let onStopCallback = null;
 let currentChannelUrl = null;
-let isStopping = false;
+let generation = 0;
+let operationQueue = Promise.resolve();
 let restartAttempts = 0;
 let restartResetTimer = null;
+let nextRetryAt = null;
+let lastError = null;
+
+const FFMPEG_ERROR_PATTERN = /error|failed|returned|refused|timed out|not found|denied|invalid/i;
 
 class BufferController {
+
+    static withLock(fn) {
+        const run = operationQueue.then(fn);
+        operationQueue = run.catch(() => {
+        });
+        return run;
+    }
 
     static isRecording() {
         return ffmpegProcess !== null;
@@ -48,6 +60,31 @@ class BufferController {
         return path.join(bufferDir, safeName);
     }
 
+    static formatFfmpegError(line) {
+        return line
+            .replace(/^\[[^\]]*@ 0x[0-9a-f]+\]\s*/i, '')
+            .replace(/\b[a-z]+:\/\/\S+?:\s+/gi, '')
+            .replace(/\b[a-z]+:\/\/\S+/gi, '<url>')
+            .trim();
+    }
+
+    static getState() {
+        let state = 'idle';
+        if (currentChannelName) {
+            if (nextRetryAt || restartAttempts > 0) state = 'retrying';
+            else if (BufferController.isRecording()) state = 'recording';
+            else state = 'failed';
+        }
+        return {
+            state,
+            isRecording: BufferController.isRecording(),
+            currentChannel: currentChannelName,
+            attempt: restartAttempts,
+            nextRetryIn: nextRetryAt ? Math.max(0, nextRetryAt - Date.now()) : null,
+            lastError
+        };
+    }
+
     static removeEndList(m3u8Path) {
         if (!fs.existsSync(m3u8Path)) return;
 
@@ -62,33 +99,43 @@ class BufferController {
         }
     }
 
-    static async autoRestart() {
-        if (isStopping || !currentChannelName || !currentChannelUrl) return;
+    static async autoRestart(processGeneration) {
+        if (processGeneration !== generation || !currentChannelName || !currentChannelUrl) return;
 
-        restartAttempts++;
-        if (restartAttempts > maxRetriesConstant) {
-            logger.error('BUFFER', 'Max restart attempts reached (' + maxRetriesConstant + '), giving up');
+        if (Date.now() - lastActivity > activityTimeoutMs) {
+            logger.log('BUFFER', 'No activity, giving up auto-restart');
+            await BufferController.withLock(async () => {
+                if (processGeneration === generation) await BufferController.stopBufferUnlocked();
+            });
             return;
         }
 
-        const delay = retryBaseDelay * Math.pow(2, restartAttempts - 1);
-        logger.log('BUFFER', 'Auto-restart attempt ' + restartAttempts + '/' + maxRetriesConstant + ' in ' + delay + 'ms...');
+        restartAttempts++;
+        const delay = Math.min(retryBaseDelay * Math.pow(2, restartAttempts - 1), retryMaxDelay);
+        logger.log('BUFFER', 'Auto-restart attempt ' + restartAttempts + ' in ' + delay + 'ms...');
 
+        nextRetryAt = Date.now() + delay;
         await new Promise(resolve => setTimeout(resolve, delay));
 
-        if (isStopping || !currentChannelName) return;
+        await BufferController.withLock(async () => {
+            if (processGeneration === generation) nextRetryAt = null;
+            if (processGeneration !== generation || BufferController.isRecording() || !currentChannelName) {
+                logger.log('BUFFER', 'Auto-restart cancelled, state changed during delay');
+                return;
+            }
 
-        const channelPath = BufferController.getChannelBufferPath(currentChannelName);
-        const m3u8Path = path.join(channelPath, 'live.m3u8');
+            const channelPath = BufferController.getChannelBufferPath(currentChannelName);
+            const m3u8Path = path.join(channelPath, 'live.m3u8');
 
-        BufferController.removeEndList(m3u8Path);
+            BufferController.removeEndList(m3u8Path);
 
-        try {
-            await BufferController.startBuffer({name: currentChannelName, url: currentChannelUrl});
-            logger.log('BUFFER', 'Auto-restart successful');
-        } catch (err) {
-            logger.error('BUFFER', 'Auto-restart failed:', err.message);
-        }
+            try {
+                await BufferController.startBuffer({name: currentChannelName, url: currentChannelUrl});
+                logger.log('BUFFER', 'Auto-restart successful');
+            } catch (err) {
+                logger.error('BUFFER', 'Auto-restart failed:', err.message);
+            }
+        });
     }
 
     static async startBuffer(channel) {
@@ -102,6 +149,7 @@ class BufferController {
 
         const ffmpegArgs = [
             '-user_agent', 'Mozilla/5.0',
+            '-rw_timeout', String(inputReadTimeout * 1000),
             '-i', channel.url,
             '-c', 'copy',
             '-f', 'hls',
@@ -116,46 +164,61 @@ class BufferController {
         logger.log('BUFFER', 'URL:', channel.url);
         logger.log('BUFFER', 'Output:', m3u8Path, '| Max segments:', maxSegments, '(' + bufferDurationMinutes + ' min retention)');
 
-        ffmpegProcess = spawn('ffmpeg', ffmpegArgs);
+        const proc = spawn('ffmpeg', ffmpegArgs);
+        const processGeneration = ++generation;
+        ffmpegProcess = proc;
 
-        ffmpegProcess.on('error', (err) => {
-            logger.error('BUFFER', 'FFmpeg spawn error:', err.message);
-        });
-
-        ffmpegProcess.stderr.on('data', (data) => {
-            const msg = data.toString();
-            if (msg.toLowerCase().includes('error')) {
-                logger.error('FFmpeg', msg.trim());
+        proc.on('error', (err) => {
+            if (err.code === 'ENOENT') {
+                logger.error('BUFFER', 'ffmpeg not found, it must be installed and available on PATH');
+                lastError = 'ffmpeg not found on server';
+            } else {
+                logger.error('BUFFER', 'FFmpeg spawn error:', err.message);
+            }
+            // A failed spawn emits 'error' but never 'exit', so clear the state here
+            if (proc.pid === undefined && ffmpegProcess === proc) {
+                ffmpegProcess = null;
             }
         });
 
-        ffmpegProcess.on('exit', async (code, signal) => {
+        proc.stderr.on('data', (data) => {
+            const lines = data.toString().split('\n').filter(line => FFMPEG_ERROR_PATTERN.test(line));
+            if (lines.length === 0) return;
+            logger.error('FFmpeg', lines.join('\n').trim());
+            if (ffmpegProcess === proc) {
+                lastError = BufferController.formatFfmpegError(lines[lines.length - 1]);
+            }
+        });
+
+        proc.on('exit', async (code, signal) => {
+            if (ffmpegProcess !== proc) return;
             ffmpegProcess = null;
 
-            if (isStopping || signal === 'SIGTERM' || signal === 'SIGINT') {
+            if (processGeneration !== generation || signal === 'SIGTERM' || signal === 'SIGINT') {
                 logger.log('BUFFER', 'FFmpeg stopped by user');
             } else if (code === 0) {
                 logger.log('BUFFER', 'FFmpeg exited normally, attempting auto-restart...');
-                await BufferController.autoRestart();
+                if (!lastError) lastError = 'Source stream ended or timed out';
+                await BufferController.autoRestart(processGeneration);
             } else {
                 logger.log('BUFFER', 'FFmpeg crashed (code:', code, '), attempting auto-restart...');
-                await BufferController.autoRestart();
+                if (!lastError) lastError = 'FFmpeg exited with code ' + code;
+                await BufferController.autoRestart(processGeneration);
             }
         });
 
         currentChannelName = channel.name;
         currentChannelUrl = channel.url;
-        activityTimeoutMs = activityTimeout;
         if (!bufferStartTime) {
             bufferStartTime = Date.now();
         }
-        BufferController.updateActivity();
         BufferController.startCleanup();
 
         if (restartResetTimer) clearTimeout(restartResetTimer);
         restartResetTimer = setTimeout(() => {
             if (BufferController.isRecording()) {
                 restartAttempts = 0;
+                lastError = null;
                 logger.log('BUFFER', 'Stream stable, restart attempts reset');
             }
         }, 30000);
@@ -164,30 +227,12 @@ class BufferController {
         return m3u8Path;
     }
 
-    static async startBufferWithRetry(channel, maxRetries = maxRetriesConstant) {
-        let lastError = null;
-
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                return await BufferController.startBuffer(channel);
-            } catch (err) {
-                lastError = err;
-                logger.error('BUFFER', `startBuffer attempt ${attempt}/${maxRetries} failed:`, err.message);
-
-                if (attempt < maxRetries) {
-                    await BufferController.stopBuffer();
-                    const delay = Math.pow(2, attempt - 1) * retryBaseDelay;
-                    logger.log('BUFFER', `Retrying in ${delay}ms...`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                }
-            }
-        }
-
-        throw new Error(`Failed to start buffer after ${maxRetries} attempts: ${lastError.message}`);
+    static stopBuffer() {
+        return BufferController.withLock(() => BufferController.stopBufferUnlocked());
     }
 
-    static async stopBuffer() {
-        isStopping = true;
+    static async stopBufferUnlocked() {
+        generation++;
 
         if (restartResetTimer) {
             clearTimeout(restartResetTimer);
@@ -223,9 +268,10 @@ class BufferController {
         currentChannelUrl = null;
         bufferStartTime = null;
         restartAttempts = 0;
+        nextRetryAt = null;
+        lastError = null;
         if (onStopCallback) onStopCallback();
         logger.log('BUFFER', 'Recording stopped');
-        isStopping = false;
     }
 
     static async gracefulShutdown(childProcess, timeoutMs = gracefulShutdownTimeout) {
@@ -264,36 +310,21 @@ class BufferController {
         });
     }
 
-    static async forceRecover() {
-        logger.log('BUFFER', 'Force recovery initiated');
-        isStopping = true;
+    static changeChannel(newChannel) {
+        return BufferController.withLock(async () => {
+            BufferController.updateActivity();
 
-        if (BufferController.isRecording()) {
-            try {
-                await BufferController.gracefulShutdown(ffmpegProcess, forceRecoveryTimeout);
-            } catch (err) {
-                logger.error('BUFFER', 'Error during force recovery:', err.message);
+            if (currentChannelName === newChannel.name && BufferController.isRecording()) {
+                logger.log('BUFFER', 'Same channel requested, keeping current recording');
+                return;
             }
-            ffmpegProcess = null;
-        }
 
-        try {
-            await BufferController.cleanupOrphanedProcesses();
-        } catch (err) {
-            logger.error('BUFFER', 'Failed to cleanup orphaned processes:', err.message);
-        }
-
-        restartAttempts = 0;
-        isStopping = false;
-        logger.log('BUFFER', 'Force recovery completed');
-    }
-
-    static async changeChannel(newChannel) {
-        BufferController.updateActivity();
-        restartAttempts = 0;
-        logger.log('BUFFER', 'Changing channel:', currentChannelName, '->', newChannel.name);
-        await BufferController.stopBuffer();
-        return await BufferController.startBufferWithRetry(newChannel);
+            restartAttempts = 0;
+            logger.log('BUFFER', 'Changing channel:', currentChannelName, '->', newChannel.name);
+            await BufferController.stopBufferUnlocked();
+            activityTimeoutMs = activityTimeout;
+            await BufferController.startBuffer(newChannel);
+        });
     }
 
     static getStatus(req, res) {
@@ -317,8 +348,7 @@ class BufferController {
         }
 
         res.json({
-            isRecording: BufferController.isRecording(),
-            currentChannel: currentChannelName,
+            ...BufferController.getState(),
             recording: BufferController.isRecording(),
             segmentCount,
             totalSize,
@@ -356,10 +386,7 @@ class BufferController {
 
     static heartbeat(req, res) {
         BufferController.updateActivity();
-        res.json({
-            isRecording: BufferController.isRecording(),
-            currentChannel: currentChannelName
-        });
+        res.json(BufferController.getState());
     }
 
     static setTimeout(req, res) {
@@ -490,12 +517,6 @@ class BufferController {
                 logger.error('BUFFER', 'Failed to list processes:', err.message);
                 reject(err);
             });
-        });
-    }
-
-    static cleanupOrphaned() {
-        BufferController.cleanupOrphanedProcesses().catch(err => {
-            logger.error('BUFFER', 'cleanupOrphanedProcesses failed:', err.message);
         });
     }
 

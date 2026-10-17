@@ -1,5 +1,4 @@
 const express = require('express');
-const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
 
@@ -10,14 +9,7 @@ const logger = require('./logger');
 
 fs.mkdirSync(bufferDir, {recursive: true});
 
-logger.log('SERVER', 'Cleaning up orphaned processes and old buffers...');
-BufferController.cleanupOrphaned();
-BufferController.cleanupAllBuffers();
-
 const app = express();
-
-app.use(bodyParser.urlencoded({extended: true}));
-app.use(bodyParser.json());
 
 function asyncHandler(fn) {
     return function (req, res, next) {
@@ -28,6 +20,7 @@ function asyncHandler(fn) {
 app.use('/buffer', express.static(bufferDir));
 
 app.use('/public', express.static(path.join(__dirname, '../views/public')));
+app.use('/public/vendor/hls', express.static(path.dirname(require.resolve('hls.js/dist/hls.min.js'))));
 
 app.get('/api/channels', asyncHandler(ChannelController.getChannelList));
 app.get('/api/categories', asyncHandler(ChannelController.getCategories));
@@ -80,8 +73,18 @@ process.on('SIGINT', async () => {
     process.exit(0);
 });
 
-app.listen(3000, () => {
-    logger.log('SERVER', 'IPTV Plus Started');
-    logger.log('SERVER', 'URL: http://localhost:3000');
-    logger.log('SERVER', 'Buffer: ' + bufferDir);
-});
+(async () => {
+    logger.log('SERVER', 'Cleaning up orphaned processes and old buffers...');
+    try {
+        await BufferController.cleanupOrphanedProcesses();
+    } catch (err) {
+        logger.error('SERVER', 'Orphaned process cleanup failed:', err.message);
+    }
+    BufferController.cleanupAllBuffers();
+
+    app.listen(3000, () => {
+        logger.log('SERVER', 'IPTV Plus Started');
+        logger.log('SERVER', 'URL: http://localhost:3000');
+        logger.log('SERVER', 'Buffer: ' + bufferDir);
+    });
+})();

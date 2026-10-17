@@ -10,6 +10,9 @@ class IPTVPlayer {
         this.idleTimer = null;
         this.idleTimeout = TimeConstants.IDLE_TIMEOUT;
         this.isLoading = false;
+        this.playToken = 0;
+        this.channelChangePending = false;
+        this.serverState = null;
         this.currentUrl = null;
         this.bufferStartTime = null;
         this.plannedSeekPosition = null;
@@ -197,21 +200,24 @@ class IPTVPlayer {
     loadVideoFromBuffer() {
         if (!this.currentChannel) return;
 
+        var token = ++this.playToken;
         var bufferUrl = '/buffer/' + ChannelUtils.getSafeName(this.currentChannel.name) + '/live.m3u8';
         this.showIndicator(IndicatorTypes.LOADING, {message: Messages.LOADING});
 
-        this.waitForBuffer(bufferUrl)
+        this.waitForBuffer(bufferUrl, undefined, token)
             .then(() => {
                 return fetch('/api/buffer/status');
             })
             .then(res => res.json())
             .then(data => {
+                if (token !== this.playToken) return;
                 this.bufferStartTime = data.bufferStartTime;
                 return this.loadVideo(bufferUrl);
             })
-            .catch(() => {
+            .catch((err) => {
+                if (token !== this.playToken) return;
                 this.hideIndicator(IndicatorTypes.LOADING);
-                this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: Messages.CHANNEL_FAILED_TO_LOAD});
+                this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: this.withDetail(Messages.CHANNEL_FAILED_TO_LOAD, err.serverError)});
                 setTimeout(() => this.goBack(), 2000);
             });
     }
@@ -267,7 +273,7 @@ class IPTVPlayer {
 
         this.hls.on(Hls.Events.BUFFER_STALLED, () => {
             if (firstFragmentLoaded) {
-                this.showIndicator(IndicatorTypes.LOADING, {message: Messages.WAITING});
+                this.showIndicator(IndicatorTypes.LOADING, {message: this.describeServerState()});
             }
         });
 
@@ -333,19 +339,15 @@ class IPTVPlayer {
         }, {once: true});
     }
 
-    async playChannel(index) {
+    async playChannel(index, debounce) {
         if (index < 0 || index >= this.channels.length) return;
 
+        var token = ++this.playToken;
+        this.channelChangePending = true;
         this.channelIndex = index;
         var channel = this.channels[index];
         this.currentChannel = channel;
         this.currentCategory = channel.category || null;
-
-        try {
-            this.watchHistory = ChannelUtils.addToWatchHistory(this.watchHistory, channel.name);
-        } catch (e) {
-            console.error('[PLAYER] Watch history error:', e);
-        }
 
         this.updateChannelInfo();
 
@@ -359,32 +361,49 @@ class IPTVPlayer {
         this.overlayType = null;
         this.showIndicator(IndicatorTypes.LOADING, {message: Messages.LOADING});
 
+        if (debounce) {
+            await new Promise(resolve => setTimeout(resolve, TimeConstants.CHANNEL_SWITCH_DEBOUNCE));
+            if (token !== this.playToken) return;
+        }
+
+        try {
+            this.watchHistory = ChannelUtils.addToWatchHistory(this.watchHistory, channel.name);
+        } catch (e) {
+            console.error('[PLAYER] Watch history error:', e);
+        }
+
         try {
             var changeUrl = '/api/channel/change?index=' + index;
             var res = await fetch(changeUrl);
             var data = await res.json();
+            if (token !== this.playToken) return;
 
             var statusRes = await fetch('/api/buffer/status');
             var statusData = await statusRes.json();
+            if (token !== this.playToken) return;
             this.bufferStartTime = statusData.bufferStartTime;
 
-            await this.waitForBuffer(data.bufferUrl);
+            await this.waitForBuffer(data.bufferUrl, undefined, token);
+            if (token !== this.playToken) return;
+            this.channelChangePending = false;
             this.loadVideo(data.bufferUrl);
         } catch (err) {
+            if (token !== this.playToken) return;
+            this.channelChangePending = false;
             this.hideIndicator(IndicatorTypes.LOADING);
-            this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: Messages.COULD_NOT_CHANGE_CHANNEL});
+            this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: this.withDetail(Messages.COULD_NOT_CHANGE_CHANNEL, err.serverError)});
             setTimeout(() => this.goBack(), 2000);
         }
     }
 
     channelUp() {
         var newIndex = (this.channelIndex + 1) % this.channels.length;
-        this.playChannel(newIndex);
+        this.playChannel(newIndex, true);
     }
 
     channelDown() {
         var newIndex = (this.channelIndex - 1 + this.channels.length) % this.channels.length;
-        this.playChannel(newIndex);
+        this.playChannel(newIndex, true);
     }
 
     togglePlay() {
@@ -657,12 +676,20 @@ class IPTVPlayer {
         }
     }
 
-    async waitForBuffer(bufferUrl, maxWait) {
+    async waitForBuffer(bufferUrl, maxWait, token) {
         if (maxWait === undefined) maxWait = TimeConstants.BUFFER_MAX_WAIT;
         var startTime = Date.now();
         var checkInterval = TimeConstants.BUFFER_CHECK_INTERVAL;
 
         while (Date.now() - startTime < maxWait) {
+            if (token !== undefined && token !== this.playToken) return false;
+
+            var state = this.serverState;
+            if (state && state.state === 'failed' && this.currentChannel && state.currentChannel === this.currentChannel.name) {
+                var failure = new Error('Recording failed');
+                failure.serverError = state.lastError;
+                throw failure;
+            }
             try {
                 var response = await fetch(bufferUrl);
                 if (response.ok) {
@@ -711,14 +738,56 @@ class IPTVPlayer {
     }
 
     setupHeartbeat() {
+        var self = this;
         this.heartbeatInterval = setInterval(function () {
+            var token = self.playToken;
             fetch('/api/buffer/heartbeat', {
                 method: 'GET',
                 cache: 'no-cache',
                 keepalive: true
+            }).then(function (res) {
+                return res.json();
+            }).then(function (state) {
+                if (token === self.playToken) self.handleServerState(state);
             }).catch(() => {
             });
         }, TimeConstants.HEARTBEAT_INTERVAL);
+    }
+
+    handleServerState(state) {
+        this.serverState = state;
+        if (!this.currentChannel || this.overlayType === IndicatorTypes.ERROR_PERMANENT) return;
+
+        var isCurrentChannel = state.currentChannel === this.currentChannel.name;
+
+        if (!this.channelChangePending && (state.state === 'idle' || state.state === 'failed' || !isCurrentChannel)) {
+            var message = state.state === 'failed' ? Messages.RECORDING_FAILED : Messages.RECORDING_STOPPED;
+            this.hideIndicator(IndicatorTypes.LOADING);
+            this.showIndicator(IndicatorTypes.ERROR_PERMANENT, {message: this.withDetail(message, state.lastError)});
+            setTimeout(() => this.goBack(), 3000);
+            return;
+        }
+
+        if (this.overlayType === IndicatorTypes.LOADING && isCurrentChannel && state.state === 'retrying') {
+            this.showIndicator(IndicatorTypes.LOADING, {message: this.describeServerState()});
+        }
+    }
+
+    describeServerState() {
+        var state = this.serverState;
+        if (!state || state.state !== 'retrying' || !this.currentChannel || state.currentChannel !== this.currentChannel.name) {
+            return Messages.WAITING;
+        }
+
+        var text = state.nextRetryIn !== null
+            ? Messages.SOURCE_RETRYING + ' (' + Messages.ATTEMPT + ' ' + state.attempt + ', ' + Math.ceil(state.nextRetryIn / 1000) + 's)'
+            : Messages.SOURCE_RECONNECTING + ' (' + Messages.ATTEMPT + ' ' + state.attempt + ')';
+        return this.withDetail(text, state.lastError);
+    }
+
+    withDetail(message, detail) {
+        if (!detail) return message;
+        return '<div>' + message + '<div class="overlay-detail">' + ChannelUtils.escapeHtml(detail) + '</div></div>';
     }
 
     setupKeyboardEvents() {

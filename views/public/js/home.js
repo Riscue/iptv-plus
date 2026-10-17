@@ -105,6 +105,7 @@ class HomePage {
         try {
             var res = await fetch('/api/channels');
             var data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
             this.channels = data.channels || [];
 
             var catRes = await fetch('/api/categories');
@@ -114,6 +115,7 @@ class HomePage {
             console.log('[HOME] Loaded ' + this.channels.length + ' channels, ' + this.categories.length + ' categories');
         } catch (err) {
             console.error('[HOME] Failed to load data:', err);
+            this.showNotification(Messages.CHANNELS_FAILED_TO_LOAD + ': ' + err.message, true);
         }
     }
 
@@ -162,16 +164,17 @@ class HomePage {
         this.showNotification(Messages.ADDED_TO_FAVORITES);
     }
 
-    showNotification(message) {
+    showNotification(message, isError) {
         var notification = document.createElement('div');
         notification.className = 'notification';
         notification.textContent = message;
-        notification.style.cssText = 'position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(0, 212, 255, 0.9); color: #fff; padding: 12px 24px; border-radius: 8px; z-index: 10000; font-weight: 500;';
+        var background = isError ? 'rgba(220, 40, 40, 0.9)' : 'rgba(0, 212, 255, 0.9)';
+        notification.style.cssText = 'position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: ' + background + '; color: #fff; padding: 12px 24px; border-radius: 8px; z-index: 10000; font-weight: 500;';
         document.body.appendChild(notification);
 
         setTimeout(function () {
             notification.remove();
-        }, 2000);
+        }, isError ? 6000 : 2000);
     }
 
     renderFavorites() {
@@ -687,7 +690,9 @@ class HomePage {
             fetch('/api/channel/change?index=' + index)
                 .then(function (response) {
                     console.log('[HOME] Channel change response:', response.status);
-                    return response.json();
+                    return response.json().then(function (data) {
+                        if (!response.ok) throw new Error(data.error || 'HTTP ' + response.status);
+                    });
                 })
                 .then(function () {
                     self.addToWatchHistory(self.channels[index]);
@@ -695,6 +700,7 @@ class HomePage {
                 })
                 .catch(function (err) {
                     console.error('[HOME] Failed to change channel:', err);
+                    self.showNotification(Messages.CHANNEL_START_FAILED + ': ' + err.message, true);
                 });
         } else {
             console.error('[HOME] Channel not found:', channel.name);

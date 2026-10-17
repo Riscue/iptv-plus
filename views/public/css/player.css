@@ -132,6 +132,14 @@ body {
 
 #video-overlay.loading-mode .loading-text {
     color: #00d4ff;
+    text-align: center;
+}
+
+#video-overlay .overlay-detail {
+    font-size: 0.55em;
+    opacity: 0.85;
+    margin-top: 8px;
+    text-align: center;
 }
 
 @keyframes spin {

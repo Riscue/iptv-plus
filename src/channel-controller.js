@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const axios = require('axios');
+const {Readable} = require('stream');
+const {pipeline} = require('stream/promises');
 const M3U8FileParser = require('m3u8-file-parser');
 const {playlistUrl, playlistFile, playlistCacheDuration} = require('./constants');
 const BufferController = require('./buffer-controller');
@@ -13,6 +14,7 @@ let channelIndex = 0;
 let currentCategory = null;
 
 let playlistDownloadPromise = null;
+let channelsLoadedAt = 0;
 
 BufferController.setOnStop(() => {
     currentChannel = null;
@@ -20,7 +22,21 @@ BufferController.setOnStop(() => {
 
 class ChannelController {
 
+    static async ensureChannels() {
+        const expired = Date.now() - channelsLoadedAt >= playlistCacheDuration;
+        if (channelsCache.length > 0 && !expired) return;
+
+        await ChannelController.downloadPlaylist();
+        ChannelController.loadChannels();
+        channelsLoadedAt = Date.now();
+    }
+
     static async downloadPlaylist() {
+        if (playlistDownloadPromise) {
+            logger.log('PLAYLIST', 'Download already in progress, waiting...');
+            return playlistDownloadPromise;
+        }
+
         if (fs.existsSync(playlistFile)) {
             const stats = fs.statSync(playlistFile);
             const age = Date.now() - stats.mtimeMs;
@@ -32,35 +48,24 @@ class ChannelController {
             }
         }
 
-        if (playlistDownloadPromise) {
-            logger.log('PLAYLIST', 'Download already in progress, waiting...');
-            return playlistDownloadPromise;
-        }
-
         logger.log('PLAYLIST', 'Downloading from:', playlistUrl);
 
         playlistDownloadPromise = (async () => {
+            const tmpFile = playlistFile + '.tmp';
             try {
-                const writer = fs.createWriteStream(playlistFile);
-                const response = await axios({
-                    url: playlistUrl, method: 'GET', responseType: 'stream'
-                });
-                response.data.pipe(writer);
-
-                await new Promise((resolve, reject) => {
-                    writer.on('finish', () => {
-                        logger.log('PLAYLIST', 'Downloaded and cached for 24h');
-                        resolve();
-                    });
-                    writer.on('error', (err) => {
-                        logger.error('PLAYLIST', 'Download error:', err.message);
-                        reject(err);
-                    });
-                });
+                const response = await fetch(playlistUrl, {signal: AbortSignal.timeout(120000)});
+                if (!response.ok) throw new Error('Request failed with status code ' + response.status);
+                await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(tmpFile));
+                fs.renameSync(tmpFile, playlistFile);
+                logger.log('PLAYLIST', 'Downloaded and cached for 24h');
             } catch (err) {
-                logger.error('PLAYLIST', 'Download failed:', err.message);
-                playlistDownloadPromise = null;
-                throw err;
+                if (err.cause && err.cause.code) err.message += ' (' + err.cause.code + ')';
+                fs.rmSync(tmpFile, {force: true});
+                if (!fs.existsSync(playlistFile)) {
+                    logger.error('PLAYLIST', 'Download failed:', err.message);
+                    throw err;
+                }
+                logger.error('PLAYLIST', 'Download failed, using stale cache:', err.message);
             } finally {
                 playlistDownloadPromise = null;
             }
@@ -122,22 +127,35 @@ class ChannelController {
                 }
             });
 
-            channelsCache = [];
+            const loadedChannels = [];
             channelMap.forEach((chans, cat) => {
                 if (chans.length > 0) {
-                    channelsCache.push(...chans);
+                    loadedChannels.push(...chans);
                 }
             });
 
+            if (loadedChannels.length === 0) {
+                logger.error('PLAYLIST', 'Playlist has no channels, discarding cached file');
+                fs.rmSync(playlistFile, {force: true});
+                return channelsCache;
+            }
+
+            channelsCache = loadedChannels;
             categories = Array.from(channelMap.keys())
                 .filter(cat => channelMap.get(cat).length > 0);
+
+            if (currentChannel) {
+                const idx = channelsCache.findIndex(ch => ch.name === currentChannel.name);
+                if (idx !== -1) channelIndex = idx;
+            }
 
             logger.log('PLAYLIST', 'Loaded ' + channelsCache.length + ' channels in ' + categories.length + ' categories');
 
             return channelsCache;
         } catch (err) {
-            logger.error('PLAYLIST', 'Parse error:', err.message);
-            return [];
+            logger.error('PLAYLIST', 'Parse error, discarding cached file:', err.message);
+            fs.rmSync(playlistFile, {force: true});
+            return channelsCache;
         }
     }
 
@@ -147,10 +165,7 @@ class ChannelController {
 
     static async getChannelList(req, res) {
         try {
-            if (channelsCache.length === 0) {
-                await ChannelController.downloadPlaylist();
-                ChannelController.loadChannels();
-            }
+            await ChannelController.ensureChannels();
 
             const channels = channelsCache;
 
@@ -171,10 +186,7 @@ class ChannelController {
 
     static async getCategories(req, res) {
         try {
-            if (channelsCache.length === 0) {
-                await ChannelController.downloadPlaylist();
-                ChannelController.loadChannels();
-            }
+            await ChannelController.ensureChannels();
 
             const categoryMap = new Map();
             channelsCache.forEach(ch => {
@@ -202,10 +214,7 @@ class ChannelController {
                 return res.json({channels: []});
             }
 
-            if (channelsCache.length === 0) {
-                await ChannelController.downloadPlaylist();
-                ChannelController.loadChannels();
-            }
+            await ChannelController.ensureChannels();
 
             const results = channelsCache
                 .filter(ch => ch.name.toLowerCase().includes(query))
@@ -230,13 +239,10 @@ class ChannelController {
             const {index, name, url, category} = req.query;
             let targetChannel;
 
+            await ChannelController.ensureChannels();
+
             if (index !== undefined) {
                 const idx = parseInt(index);
-
-                if (channelsCache.length === 0) {
-                    await ChannelController.downloadPlaylist();
-                    ChannelController.loadChannels();
-                }
 
                 if (idx >= 0 && idx < channelsCache.length) {
                     targetChannel = channelsCache[idx];
@@ -244,11 +250,6 @@ class ChannelController {
                     logger.log('CHANNEL', 'Changing to channel by index:', idx, '-', targetChannel.name);
                 }
             } else if (name || url) {
-                if (channelsCache.length === 0) {
-                    await ChannelController.downloadPlaylist();
-                    ChannelController.loadChannels();
-                }
-
                 targetChannel = channelsCache.find(ch => name ? ch.name === name : ch.url === url);
 
                 if (targetChannel) {
@@ -256,11 +257,6 @@ class ChannelController {
                     logger.log('CHANNEL', 'Changing to channel by name:', targetChannel.name);
                 }
             } else if (category) {
-                if (channelsCache.length === 0) {
-                    await ChannelController.downloadPlaylist();
-                    ChannelController.loadChannels();
-                }
-
                 const catChannels = ChannelController.getChannelsByCategory(category);
                 if (catChannels.length > 0) {
                     targetChannel = catChannels[0];
@@ -275,17 +271,6 @@ class ChannelController {
             }
 
             currentCategory = targetChannel.category;
-
-            if (currentChannel && currentChannel.name === targetChannel.name && BufferController.isRecording()) {
-                logger.log('CHANNEL', 'Same channel requested, resetting activity timer');
-                BufferController.updateActivity();
-                return res.json({
-                    current: currentChannel,
-                    index: channelIndex,
-                    category: currentCategory,
-                    bufferUrl: '/buffer/' + BufferController.getSafeName(currentChannel.name) + '/live.m3u8'
-                });
-            }
 
             await BufferController.changeChannel(targetChannel);
             currentChannel = targetChannel;

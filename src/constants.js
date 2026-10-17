@@ -7,8 +7,9 @@ module.exports = {
     bufferDurationMinutes: 180,
 
     segmentDuration: 5,
-    maxRetries: 3,
     retryBaseDelay: 1000,
+    retryMaxDelay: 30000,
+    inputReadTimeout: 10000,
 
     activityTimeout: 300000,
     activityCheckInterval: 30000,
@@ -16,5 +17,4 @@ module.exports = {
 
     gracefulShutdownTimeout: 2000,
     forceKillTimeout: 500,
-    forceRecoveryTimeout: 1000,
 };
