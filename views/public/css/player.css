@@ -766,9 +766,55 @@ body.idle #video-overlay.active {
     opacity: 1 !important;
 }
 
+@media (max-width: 1100px) {
+    #recording-status {
+        top: clamp(75px, 10vh, 90px);
+        max-width: calc(100vw - 30px);
+    }
+}
+
 @media (max-width: 768px) {
-    #channel-list {
+    #channel-list,
+    #settings-panel {
         width: 100%;
+        max-width: 100%;
+    }
+
+    .channel-info {
+        position: static;
+        transform: none;
+        flex: 1;
+        min-width: 0;
+        max-width: none;
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .buttons {
+        gap: 0.5rem;
+    }
+
+    .top-btn {
+        padding: 10px 12px;
+    }
+
+    .top-btn-label {
+        display: none;
+    }
+
+    #recording-status {
+        white-space: normal;
+    }
+
+    #video-overlay.loading-mode {
+        font-size: clamp(1rem, 4.5vw, 1.3rem);
+    }
+
+    #video-overlay.loading-mode .loading-text {
+        max-width: 85vw;
+        padding: 10px 16px;
     }
 
     .control-btn {

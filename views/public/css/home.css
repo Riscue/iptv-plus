@@ -615,6 +615,24 @@ section h2 {
         grid-template-columns: repeat(3, 1fr);
     }
 
+    #recording-card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+        padding: 16px;
+    }
+
+    .recording-card-title {
+        font-size: 1.2rem;
+    }
+
+    #recording-card-actions .recording-action {
+        flex: 1;
+        padding: 12px 10px;
+        font-size: 1rem;
+        white-space: nowrap;
+    }
+
     #channels-grid {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     }
