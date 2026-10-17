@@ -25,6 +25,9 @@ const Messages = {
 
     SOURCE_RETRYING: 'Source connection lost - Retrying',
     SOURCE_RECONNECTING: 'Reconnecting to source',
+    RECORDING_INTERRUPTED: 'Recording interrupted',
+    RETRYING: 'retrying',
+    RECONNECTING: 'reconnecting',
     ATTEMPT: 'attempt',
     RECORDING_FAILED: 'Recording failed - Returning to Home',
     RECORDING_STOPPED: 'Recording stopped on server - Returning to Home',

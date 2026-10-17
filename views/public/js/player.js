@@ -36,6 +36,7 @@ class IPTVPlayer {
             overlay: document.getElementById('video-overlay'),
             channelName: document.getElementById('channel-name'),
             channelNumber: document.getElementById('channel-number'),
+            recordingStatus: document.getElementById('recording-status'),
             currentTime: document.getElementById('current-time'),
             totalTime: document.getElementById('total-time'),
             btnLive: document.getElementById('btn-live'),
@@ -344,6 +345,7 @@ class IPTVPlayer {
 
         var token = ++this.playToken;
         this.channelChangePending = true;
+        this.updateRecordingStatus(null);
         this.channelIndex = index;
         var channel = this.channels[index];
         this.currentChannel = channel;
@@ -759,6 +761,7 @@ class IPTVPlayer {
         if (!this.currentChannel || this.overlayType === IndicatorTypes.ERROR_PERMANENT) return;
 
         var isCurrentChannel = state.currentChannel === this.currentChannel.name;
+        this.updateRecordingStatus(!this.channelChangePending && isCurrentChannel ? state : null);
 
         if (!this.channelChangePending && (state.state === 'idle' || state.state === 'failed' || !isCurrentChannel)) {
             var message = state.state === 'failed' ? Messages.RECORDING_FAILED : Messages.RECORDING_STOPPED;
@@ -778,11 +781,25 @@ class IPTVPlayer {
         if (!state || state.state !== 'retrying' || !this.currentChannel || state.currentChannel !== this.currentChannel.name) {
             return Messages.WAITING;
         }
+        return this.withDetail(this.retryText(state), state.lastError);
+    }
 
-        var text = state.nextRetryIn !== null
+    retryText(state) {
+        return state.nextRetryIn !== null
             ? Messages.SOURCE_RETRYING + ' (' + Messages.ATTEMPT + ' ' + state.attempt + ', ' + Math.ceil(state.nextRetryIn / 1000) + 's)'
             : Messages.SOURCE_RECONNECTING + ' (' + Messages.ATTEMPT + ' ' + state.attempt + ')';
-        return this.withDetail(text, state.lastError);
+    }
+
+    updateRecordingStatus(state) {
+        var badge = this.els.recordingStatus;
+        if (!badge) return;
+        if (!state || state.state !== 'retrying') {
+            badge.classList.add('hidden');
+            return;
+        }
+        var action = state.nextRetryIn !== null ? Messages.RETRYING : Messages.RECONNECTING;
+        badge.textContent = Messages.RECORDING_INTERRUPTED + ' · ' + action + ' (' + Messages.ATTEMPT + ' ' + state.attempt + ')';
+        badge.classList.remove('hidden');
     }
 
     withDetail(message, detail) {
@@ -1213,11 +1230,6 @@ class IPTVPlayer {
                 self.hideIndicator();
             });
         }
-
-        this.bindClick('btn-back', function (e) {
-            e.preventDefault();
-            self.goBack();
-        });
     }
 
     updatePlayButtons() {

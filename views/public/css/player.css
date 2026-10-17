@@ -207,7 +207,10 @@ body {
 }
 
 .channel-info {
-    flex: 1;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 40vw;
     text-align: center;
 }
 
@@ -225,6 +228,7 @@ body {
 .buttons {
     display: flex;
     gap: 1rem;
+    margin-left: auto;
 }
 
 .icon-btn {
@@ -713,6 +717,35 @@ body.idle #bottom-bar,
 body.idle #fullscreen-btn {
     opacity: 0;
     pointer-events: none;
+}
+
+#recording-status {
+    position: absolute;
+    top: clamp(15px, 2vh, 25px);
+    left: clamp(15px, 2vw, 30px);
+    max-width: calc(33vw - 30px);
+    padding: 10px 20px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    font-size: clamp(16px, 1.6vw, 24px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+    z-index: 25;
+    pointer-events: none;
+}
+
+#recording-status::before {
+    content: '\25CF';
+    color: #ff4d4d;
+    margin-right: 10px;
+}
+
+#recording-status.hidden {
+    display: none;
 }
 
 body.idle #video-overlay.active {

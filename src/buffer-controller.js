@@ -85,20 +85,6 @@ class BufferController {
         };
     }
 
-    static removeEndList(m3u8Path) {
-        if (!fs.existsSync(m3u8Path)) return;
-
-        try {
-            const content = fs.readFileSync(m3u8Path, 'utf-8');
-            if (content.includes('#EXT-X-ENDLIST')) {
-                fs.writeFileSync(m3u8Path, content.replace(/#EXT-X-ENDLIST\s*/g, ''));
-                logger.log('BUFFER', 'Removed #EXT-X-ENDLIST from m3u8');
-            }
-        } catch (err) {
-            logger.error('BUFFER', 'Failed to remove endlist:', err.message);
-        }
-    }
-
     static async autoRestart(processGeneration) {
         if (processGeneration !== generation || !currentChannelName || !currentChannelUrl) return;
 
@@ -123,11 +109,6 @@ class BufferController {
                 logger.log('BUFFER', 'Auto-restart cancelled, state changed during delay');
                 return;
             }
-
-            const channelPath = BufferController.getChannelBufferPath(currentChannelName);
-            const m3u8Path = path.join(channelPath, 'live.m3u8');
-
-            BufferController.removeEndList(m3u8Path);
 
             try {
                 await BufferController.startBuffer({name: currentChannelName, url: currentChannelUrl});
@@ -155,7 +136,7 @@ class BufferController {
             '-f', 'hls',
             '-hls_time', String(segmentDuration),
             '-hls_list_size', String(maxSegments),
-            '-hls_flags', 'delete_segments+append_list+independent_segments+discont_start',
+            '-hls_flags', 'delete_segments+append_list+independent_segments+discont_start+omit_endlist',
             '-hls_segment_filename', segmentPath,
             m3u8Path
         ];
