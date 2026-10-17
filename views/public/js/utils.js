@@ -74,8 +74,11 @@ var ChannelUtils = {
 
     formatTime: function (seconds) {
         if (!seconds || isNaN(seconds)) return '0:00';
-        var mins = Math.floor(seconds / 60);
+        var hours = Math.floor(seconds / 3600);
+        var mins = Math.floor((seconds % 3600) / 60);
         var secs = Math.floor(seconds % 60);
-        return mins + ':' + (secs < 10 ? '0' : '') + secs;
+        var tail = (secs < 10 ? '0' : '') + secs;
+        if (hours > 0) return hours + ':' + (mins < 10 ? '0' : '') + mins + ':' + tail;
+        return mins + ':' + tail;
     },
 };

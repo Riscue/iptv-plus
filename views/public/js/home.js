@@ -7,6 +7,8 @@ class HomePage {
         this.searchTimeout = null;
         this.watchHistory = ChannelUtils.loadWatchHistory();
         this.currentRecording = null;
+        this.recordingState = null;
+        this.stopConfirmTimer = null;
 
         this.els = {
             contentLoading: document.getElementById('content-loading'),
@@ -22,7 +24,13 @@ class HomePage {
             currentCategoryName: document.getElementById('current-category-name'),
             channelsTitle: document.getElementById('channels-title'),
             searchInput: document.getElementById('search-input'),
-            btnBack: document.getElementById('btn-back')
+            btnBack: document.getElementById('btn-back'),
+            recordingCard: document.getElementById('recording-card'),
+            recordingCardChannel: document.getElementById('recording-card-channel'),
+            recordingCardStatus: document.getElementById('recording-card-status'),
+            btnResumeRecording: document.getElementById('btn-resume-recording'),
+            btnStopRecording: document.getElementById('btn-stop-recording'),
+            favoritesHint: document.getElementById('favorites-hint')
         };
 
         this.init();
@@ -39,9 +47,11 @@ class HomePage {
         this.setupPageShowHandler();
         this.setupFullscreenFocusRestore();
         this.setupTvBackButton();
+        this.setupRecordingCard();
         this.renderFavorites();
         this.renderRecent();
         this.renderCategories();
+        this.renderRecordingCard();
     }
 
     showLoading() {
@@ -61,6 +71,7 @@ class HomePage {
         window.addEventListener('pageshow', async function (e) {
             await self.loadBufferStatus();
             self.renderRecent();
+            self.renderRecordingCard();
 
             if (e.persisted) {
                 self.loadData();
@@ -69,7 +80,7 @@ class HomePage {
             setTimeout(function () {
                 var active = document.activeElement;
                 if (!active || active === document.body || !document.body.contains(active)) {
-                    var firstItem = document.querySelector('.favorite-item:not(.empty), .recent-item, .category-item');
+                    var firstItem = self.firstVisible('.recording-action, .favorite-item:not(.empty), .recent-item, .category-item');
                     if (firstItem) {
                         firstItem.focus();
                     }
@@ -121,18 +132,109 @@ class HomePage {
 
     async loadBufferStatus() {
         try {
-            var res = await fetch('/api/buffer/status');
+            var res = await fetch('/api/buffer/state');
             var data = await res.json();
-            if (data.isRecording && data.currentChannel) {
+            this.recordingState = data;
+            if (data.state !== 'idle' && data.currentChannel) {
                 this.currentRecording = this.channels.find(function (ch) {
                     return ch.name === data.currentChannel;
-                });
+                }) || null;
             } else {
                 this.currentRecording = null;
             }
         } catch (err) {
+            this.recordingState = null;
             this.currentRecording = null;
         }
+    }
+
+    firstVisible(selector) {
+        return Array.from(document.querySelectorAll(selector)).find(function (el) {
+            return el.offsetParent !== null;
+        }) || null;
+    }
+
+    setupRecordingCard() {
+        var self = this;
+        if (this.els.btnResumeRecording) {
+            this.els.btnResumeRecording.addEventListener('click', function () {
+                self.resumeRecording();
+            });
+        }
+        if (this.els.btnStopRecording) {
+            this.els.btnStopRecording.addEventListener('click', function () {
+                self.stopRecording();
+            });
+        }
+
+        setInterval(async function () {
+            var previous = self.currentRecording;
+            await self.loadBufferStatus();
+            self.renderRecordingCard();
+            if (previous !== self.currentRecording) self.renderRecent();
+        }, TimeConstants.HEARTBEAT_INTERVAL);
+    }
+
+    renderRecordingCard() {
+        var card = this.els.recordingCard;
+        if (!card) return;
+
+        var state = this.recordingState;
+        if (!this.currentRecording || !state) {
+            if (card.contains(document.activeElement)) {
+                var next = this.firstVisible('.favorite-item:not(.empty), .recent-item, .category-item');
+                if (next) next.focus();
+            }
+            card.classList.add('hidden');
+            return;
+        }
+
+        this.els.recordingCardChannel.textContent = this.currentRecording.name;
+
+        var parts = [];
+        if (state.state === 'retrying') parts.push(Messages.RECORDING_SOURCE_LOST);
+        if (state.stopsIn !== null && state.stopsIn < 24 * 60 * 60 * 1000) {
+            parts.push(Messages.RECORDING_STOPS_IN.replace('{minutes}', Math.max(1, Math.ceil(state.stopsIn / 60000))));
+        }
+        this.els.recordingCardStatus.textContent = parts.join(' · ');
+        card.classList.toggle('retrying', state.state === 'retrying');
+        card.classList.remove('hidden');
+    }
+
+    resumeRecording() {
+        // Go straight to the player: requesting a channel change would restart the recording while it is retrying
+        if (!this.currentRecording) return;
+        this.addToWatchHistory(this.currentRecording);
+        window.location.href = '/player';
+    }
+
+    async stopRecording() {
+        var btn = this.els.btnStopRecording;
+        if (!this.stopConfirmTimer) {
+            btn.textContent = Messages.STOP_RECORDING_CONFIRM;
+            btn.classList.add('confirm');
+            this.stopConfirmTimer = setTimeout(this.resetStopButton.bind(this), 3000);
+            return;
+        }
+
+        this.resetStopButton();
+        try {
+            var res = await fetch('/api/buffer/stop', {method: 'POST'});
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            this.showNotification(Messages.RECORDING_STOPPED_NOTICE);
+        } catch (err) {
+            this.showNotification(Messages.STOP_RECORDING_FAILED + ': ' + err.message, true);
+        }
+        await this.loadBufferStatus();
+        this.renderRecordingCard();
+        this.renderRecent();
+    }
+
+    resetStopButton() {
+        clearTimeout(this.stopConfirmTimer);
+        this.stopConfirmTimer = null;
+        this.els.btnStopRecording.textContent = Messages.STOP_RECORDING;
+        this.els.btnStopRecording.classList.remove('confirm');
     }
 
     addToWatchHistory(channel) {
@@ -199,6 +301,10 @@ class HomePage {
             }
 
             grid.appendChild(div);
+        }
+
+        if (this.els.favoritesHint) {
+            this.els.favoritesHint.classList.toggle('hidden', this.favorites.some(Boolean));
         }
 
         grid.onclick = function (e) {
@@ -293,7 +399,9 @@ class HomePage {
 
     navigate(e) {
         var item = e.target.closest('.recent-item');
-        if (item) {
+        if (item && item.classList.contains('recording')) {
+            this.resumeRecording();
+        } else if (item) {
             var index = parseInt(item.dataset.index);
             this.playChannel(this.channels[index]);
         }
@@ -306,7 +414,7 @@ class HomePage {
         var self = this;
 
         grid.innerHTML = this.categories.map(function (cat) {
-            return '<div class="category-item" data-category="' + ChannelUtils.escapeHtml(cat.name) + '" tabindex="0">' + '<div class="category-name">' + ChannelUtils.escapeHtml(cat.name) + '</div>' + '<div class="category-count">' + cat.count + ' channels</div>' + '</div>';
+            return '<div class="category-item" data-category="' + ChannelUtils.escapeHtml(cat.name) + '" tabindex="0">' + '<div class="category-name">' + ChannelUtils.escapeHtml(cat.name) + '</div>' + '<div class="category-count">' + cat.count + ' ' + Messages.CHANNEL_COUNT + '</div>' + '</div>';
         }).join('');
 
         grid.onclick = function (e) {
@@ -338,7 +446,7 @@ class HomePage {
         this.els.channelsView.classList.remove('hidden');
         this.els.backNav.classList.remove('hidden');
         this.els.currentCategoryName.textContent = categoryName;
-        this.els.channelsTitle.textContent = categoryName + ' - Channels';
+        this.els.channelsTitle.classList.add('hidden');
 
         this.renderChannels(catChannels);
 
@@ -442,6 +550,7 @@ class HomePage {
         this.els.backNav.classList.remove('hidden');
         this.els.currentCategoryName.textContent = Messages.SEARCH + ': ' + query;
         this.els.channelsTitle.textContent = Messages.SEARCH_RESULTS;
+        this.els.channelsTitle.classList.remove('hidden');
 
         this.renderChannels(filtered.slice(0, 100));
     }
@@ -503,8 +612,7 @@ class HomePage {
     handleColorKeys(e) {
         if (e.keyCode === TVKeyCodes.GREEN) {
             e.preventDefault();
-            var recordingEl = document.querySelector('.recent-item.recording');
-            if (recordingEl) recordingEl.click();
+            this.resumeRecording();
             return true;
         }
 
@@ -541,7 +649,7 @@ class HomePage {
     }
 
     getVisibleGrids() {
-        return ['#favorites-grid', '#recent-grid', '#categories-grid', '#channels-grid']
+        return ['#recording-card-actions', '#favorites-grid', '#recent-grid', '#categories-grid', '#channels-grid']
             .map((id) => document.querySelector(id))
             .filter((g) => g && g.offsetParent !== null);
     }
@@ -571,7 +679,7 @@ class HomePage {
                 e.preventDefault();
                 var target = this.els.searchInput.value.length >= 2
                     ? document.querySelector('.channel-item')
-                    : document.querySelector('.favorite-item:not(.empty)');
+                    : this.firstVisible('.recording-action, .favorite-item:not(.empty)');
                 if (target) {
                     target.focus();
                     target.scrollIntoView({behavior: 'smooth', block: 'center'});
@@ -582,10 +690,10 @@ class HomePage {
 
         e.preventDefault();
         var current = document.activeElement;
-        var itemSelector = '.favorite-item:not(.empty), .recent-item, .category-item, .channel-item';
+        var itemSelector = '.recording-action, .favorite-item:not(.empty), .recent-item, .category-item, .channel-item';
 
         if (current.tagName === 'BODY' || !current.matches(itemSelector)) {
-            var firstItem = document.querySelector(itemSelector);
+            var firstItem = this.firstVisible(itemSelector);
             if (firstItem) {
                 firstItem.focus();
                 firstItem.scrollIntoView({behavior: 'smooth', block: 'center'});
@@ -594,7 +702,7 @@ class HomePage {
         }
 
         var grids = this.getVisibleGrids();
-        var grid = current.closest('#favorites-grid, #recent-grid, #categories-grid, #channels-grid');
+        var grid = current.closest('#recording-card-actions, #favorites-grid, #recent-grid, #categories-grid, #channels-grid');
         if (!grid) return true;
 
         var gridIdx = grids.indexOf(grid);
@@ -622,7 +730,7 @@ class HomePage {
                     targetGrid = grids[gi];
                     var nextItems = this.getGridItems(targetGrid);
                     if (nextItems.length > 0) {
-                        target = gi === 1 ? 0 : Math.min(col, nextItems.length - 1);
+                        target = targetGrid.id === 'recent-grid' ? 0 : Math.min(col, nextItems.length - 1);
                         break;
                     }
                 }

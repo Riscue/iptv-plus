@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,41 +15,56 @@
             IPTV Plus
         </h1>
         <div id="search-box">
-            <input id="search-input" type="text" placeholder="Search channels..." autocomplete="off">
+            <input id="search-input" type="text" placeholder="Kanal ara..." autocomplete="off">
             <span id="search-icon"><img src="/public/images/icons/search.svg" class="svg-icon" alt=""></span>
         </div>
     </header>
 
     <div id="content-loading" class="content-loading">
         <div class="loading-spinner"></div>
-        <p class="loading-text">Loading...</p>
+        <p class="loading-text">Yükleniyor...</p>
     </div>
 
+    <section id="recording-card" class="hidden">
+        <div class="recording-card-info">
+            <div class="recording-card-title">
+                <span class="recording-dot"></span>
+                Kaydediliyor: <strong id="recording-card-channel"></strong>
+            </div>
+            <div id="recording-card-status" class="recording-card-status"></div>
+        </div>
+        <div id="recording-card-actions">
+            <button id="btn-resume-recording" class="recording-action primary" tabindex="0">Devam et</button>
+            <button id="btn-stop-recording" class="recording-action" tabindex="0">Kaydı durdur</button>
+        </div>
+    </section>
+
     <section id="favorites" class="hidden">
-        <h2>Favorites</h2>
+        <h2>Favoriler</h2>
+        <p id="favorites-hint" class="section-hint hidden">Bir kanalın üzerindeyken Sarı tuşa basarak buraya ekleyebilirsiniz.</p>
         <div id="favorites-grid"></div>
     </section>
 
     <section id="recent" class="hidden">
-        <h2>Recently Watched</h2>
+        <h2>Son İzlenenler</h2>
         <div id="recent-grid"></div>
     </section>
 
     <div id="back-nav" class="hidden">
         <button id="btn-back" class="top-btn">
             <img src="/public/images/icons/arrow-back.svg" class="svg-icon" alt="">
-            Back
+            Geri
         </button>
         <span id="current-category-name"></span>
     </div>
 
     <section id="categories-view" class="hidden">
-        <h2>Categories</h2>
+        <h2>Kategoriler</h2>
         <div id="categories-grid"></div>
     </section>
 
     <main id="channels-view" class="hidden">
-        <h2 id="channels-title">Channels</h2>
+        <h2 id="channels-title">Kanallar</h2>
         <div id="channels-grid"></div>
     </main>
 </div>

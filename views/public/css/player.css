@@ -133,6 +133,14 @@ body {
 #video-overlay.loading-mode .loading-text {
     color: #00d4ff;
     text-align: center;
+    max-width: 70vw;
+    padding: 12px 28px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.75);
+}
+
+#video-overlay.loading-mode .overlay-detail {
+    color: rgba(255, 255, 255, 0.8);
 }
 
 #video-overlay .overlay-detail {
@@ -287,6 +295,12 @@ body {
 
 #progress-container {
     padding: clamp(10px, 1.5vh, 15px) clamp(20px, 3vw, 35px) clamp(20px, 2.5vh, 30px);
+}
+
+#live-behind {
+    margin-left: 8px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
 }
 
 .live-btn {

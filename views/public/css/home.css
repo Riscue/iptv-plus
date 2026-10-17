@@ -108,6 +108,89 @@ body {
     display: none !important;
 }
 
+#recording-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 30px;
+    padding: 20px 24px;
+    background: rgba(0, 200, 100, 0.12);
+    border: 2px solid rgba(0, 200, 100, 0.5);
+    border-radius: 15px;
+}
+
+#recording-card.retrying {
+    background: rgba(255, 170, 0, 0.12);
+    border-color: rgba(255, 170, 0, 0.6);
+}
+
+.recording-card-title {
+    font-size: 1.4rem;
+    color: #fff;
+}
+
+.recording-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 8px;
+    border-radius: 50%;
+    background: #ff4d4d;
+    animation: pulse 2s infinite;
+}
+
+.recording-card-status {
+    margin-top: 6px;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+#recording-card.retrying .recording-card-status {
+    color: #ffcc66;
+}
+
+#recording-card-actions {
+    display: flex;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.recording-action {
+    padding: 12px 22px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.recording-action.primary {
+    background: rgba(0, 200, 100, 0.35);
+    border-color: #00c864;
+}
+
+.recording-action.confirm {
+    background: rgba(220, 40, 40, 0.6);
+    border-color: #ff4d4d;
+}
+
+.recording-action:hover,
+.recording-action:focus {
+    outline: none;
+    border-color: #00d4ff;
+    box-shadow: 0 0 0 4px rgba(0, 212, 255, 0.4);
+}
+
+.section-hint {
+    margin: -10px 0 15px;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.55);
+}
+
 #back-nav {
     display: flex;
     align-items: center;

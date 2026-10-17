@@ -28,6 +28,7 @@ app.get('/api/channels/search', asyncHandler(ChannelController.searchChannels));
 app.get('/api/channel/current', asyncHandler(ChannelController.getCurrentChannel));
 app.get('/api/channel/change', asyncHandler(ChannelController.changeChannel));
 app.get('/api/buffer/status', asyncHandler(BufferController.getStatus));
+app.get('/api/buffer/state', asyncHandler(BufferController.state));
 app.get('/api/buffer/heartbeat', asyncHandler(BufferController.heartbeat));
 app.get('/api/buffer/set-timeout', asyncHandler(BufferController.setTimeout));
 app.post('/api/buffer/stop', asyncHandler(BufferController.stop));

@@ -81,6 +81,7 @@ class BufferController {
             currentChannel: currentChannelName,
             attempt: restartAttempts,
             nextRetryIn: nextRetryAt ? Math.max(0, nextRetryAt - Date.now()) : null,
+            stopsIn: currentChannelName ? Math.max(0, activityTimeoutMs - (Date.now() - lastActivity)) : null,
             lastError
         };
     }
@@ -363,6 +364,10 @@ class BufferController {
             logger.log('BUFFER', 'No activity for ' + inactiveMinutes + ' minutes, stopping recording');
             await BufferController.stopBuffer();
         }
+    }
+
+    static state(req, res) {
+        res.json(BufferController.getState());
     }
 
     static heartbeat(req, res) {

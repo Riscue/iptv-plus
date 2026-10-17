@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -23,29 +23,29 @@
         <div class="buttons">
             <button id="btn-settings" class="top-btn" tabindex="0">
                 <img src="/public/images/icons/settings.svg" class="svg-icon" alt="">
-                Ayar
+                Ayarlar
             </button>
             <button id="btn-channels" class="top-btn blue-btn" tabindex="0">
                 <img src="/public/images/icons/menu.svg" class="svg-icon" alt="">
-                Channels
+                Kanallar
             </button>
         </div>
     </div>
 
     <div id="channel-list" class="hidden">
         <div class="list-header">
-            <span>Channels</span>
+            <span>Kanallar</span>
             <button id="btn-close-list" class="close-btn">
                 <img src="/public/images/icons/close.svg" class="svg-icon" alt="">
             </button>
         </div>
         <div class="list-tabs">
             <button class="list-tab active" data-tab="favorites">Favoriler</button>
-            <button class="list-tab" data-tab="recent">Son Izlenen</button>
-            <button class="list-tab" data-tab="all">Tumu</button>
+            <button class="list-tab" data-tab="recent">Son İzlenen</button>
+            <button class="list-tab" data-tab="all">Tümü</button>
         </div>
         <div class="list-search hidden" id="tab-search-all">
-            <input id="search-input" type="text" placeholder="Search..." autocomplete="off">
+            <input id="search-input" type="text" placeholder="Ara..." autocomplete="off">
             <div id="category-tabs"></div>
         </div>
         <div id="tab-favorites" class="tab-content"></div>
@@ -64,8 +64,8 @@
         </div>
         <div class="settings-content">
             <div class="settings-section">
-                <h3>Otomatik Durdurma</h3>
-                <p class="settings-desc">İzleme yapmazsanız kayıt şu süre sonra durur:</p>
+                <h3>Otomatik durdurma</h3>
+                <p class="settings-desc">Oynatıcı kapalıyken (ana sayfadayken, TV beklemedeyken veya bağlantı koptuğunda) kayıt bu süre sonunda durur ve geri sarma geçmişi silinir. Kanal değiştirildiğinde 5 dakikaya döner.</p>
                 <div class="timeout-options">
                     <button class="timeout-btn" data-minutes="5">5 dakika</button>
                     <button class="timeout-btn" data-minutes="15">15 dakika</button>
@@ -82,22 +82,22 @@
         <div class="controls-row">
             <button id="btn-ch-prev" class="control-btn">
                 <span class="btn-icon"><img src="/public/images/icons/skip-previous.svg" class="svg-icon" alt=""></span>
-                <span class="btn-label">Prev</span>
+                <span class="btn-label">Kanal −</span>
             </button>
             <button id="btn-rwnd" class="control-btn">
                 <span class="btn-icon"><img src="/public/images/icons/backward.svg" class="svg-icon" alt=""></span>
-                <span class="btn-label">Rewind</span>
+                <span class="btn-label">−10 sn</span>
             </button>
             <button id="btn-play-pause" class="control-btn main-btn">
                 <span class="btn-icon"><img src="/public/images/icons/play.svg" class="svg-icon" alt=""></span>
             </button>
             <button id="btn-fwd" class="control-btn">
                 <span class="btn-icon"><img src="/public/images/icons/forward.svg" class="svg-icon" alt=""></span>
-                <span class="btn-label">Forward</span>
+                <span class="btn-label">+10 sn</span>
             </button>
             <button id="btn-ch-next" class="control-btn">
                 <span class="btn-icon"><img src="/public/images/icons/skip-next.svg" class="svg-icon" alt=""></span>
-                <span class="btn-label">Next</span>
+                <span class="btn-label">Kanal +</span>
             </button>
         </div>
 
@@ -116,7 +116,7 @@
                 <div>
                     <button id="btn-live" class="live-btn hidden red-btn" tabindex="0">
                         <img src="/public/images/icons/live.svg" class="svg-icon" alt="">
-                        LIVE
+                        CANLI <span id="live-behind"></span>
                     </button>
                     <button id="btn-fullscreen" class="fullscreen-btn yellow-btn" tabindex="0">
                         <img src="/public/images/icons/fullscreen.svg" class="svg-icon" alt="">

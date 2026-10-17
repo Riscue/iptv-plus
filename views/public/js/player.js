@@ -40,6 +40,7 @@ class IPTVPlayer {
             currentTime: document.getElementById('current-time'),
             totalTime: document.getElementById('total-time'),
             btnLive: document.getElementById('btn-live'),
+            liveBehind: document.getElementById('live-behind'),
             btnPlayPause: document.getElementById('btn-play-pause'),
             btnFullscreen: document.getElementById('btn-fullscreen'),
             progressBar: document.getElementById('progress-bar'),
@@ -616,6 +617,23 @@ class IPTVPlayer {
             show = panel.classList.contains('hidden');
         }
         panel.classList.toggle('hidden', !show);
+        if (show) this.markActiveTimeout();
+    }
+
+    markActiveTimeout() {
+        fetch('/api/buffer/set-timeout')
+            .then(function (res) {
+                return res.json();
+            })
+            .then(function (data) {
+                document.querySelectorAll('.timeout-btn').forEach(function (btn) {
+                    var minutes = parseInt(btn.dataset.minutes);
+                    var ms = minutes === 0 ? TimeConstants.NEVER_TIMEOUT : minutes * 60 * 1000;
+                    btn.classList.toggle('active', ms === data.timeout);
+                });
+            })
+            .catch(() => {
+            });
     }
 
     toggleFullscreen() {
@@ -786,8 +804,8 @@ class IPTVPlayer {
 
     retryText(state) {
         return state.nextRetryIn !== null
-            ? Messages.SOURCE_RETRYING + ' (' + Messages.ATTEMPT + ' ' + state.attempt + ', ' + Math.ceil(state.nextRetryIn / 1000) + 's)'
-            : Messages.SOURCE_RECONNECTING + ' (' + Messages.ATTEMPT + ' ' + state.attempt + ')';
+            ? Messages.SOURCE_RETRYING + ' (' + state.attempt + '. ' + Messages.ATTEMPT + ', ' + Math.ceil(state.nextRetryIn / 1000) + ' ' + Messages.SECONDS + ')'
+            : Messages.SOURCE_RECONNECTING + ' (' + state.attempt + '. ' + Messages.ATTEMPT + ')';
     }
 
     updateRecordingStatus(state) {
@@ -798,7 +816,7 @@ class IPTVPlayer {
             return;
         }
         var action = state.nextRetryIn !== null ? Messages.RETRYING : Messages.RECONNECTING;
-        badge.textContent = Messages.RECORDING_INTERRUPTED + ' · ' + action + ' (' + Messages.ATTEMPT + ' ' + state.attempt + ')';
+        badge.textContent = Messages.RECORDING_INTERRUPTED + ' · ' + action + ' (' + state.attempt + '. ' + Messages.ATTEMPT + ')';
         badge.classList.remove('hidden');
     }
 
@@ -1268,8 +1286,12 @@ class IPTVPlayer {
         this.els.totalTime.textContent = this.getRealTime(this.els.video.currentTime);
 
         if (this.els.btnLive) {
-            var isAtLive = this.els.video.duration && (this.els.video.duration - this.els.video.currentTime) < TimeConstants.LIVE_POSITION;
+            var behindLive = this.els.video.duration - this.els.video.currentTime;
+            var isAtLive = this.els.video.duration && behindLive < TimeConstants.LIVE_POSITION;
             this.els.btnLive.classList.toggle('hidden', isAtLive);
+            if (this.els.liveBehind) {
+                this.els.liveBehind.textContent = isAtLive ? '' : '−' + ChannelUtils.formatTime(Math.floor(behindLive));
+            }
         }
 
         this.updateProgress();
@@ -1405,7 +1427,7 @@ class IPTVPlayer {
         var self = this;
         var categories = this.getCategories();
 
-        var html = '<button class="cat-tab' + (!this.selectedCategory ? ' active' : '') + '" data-category="">Tumu</button>';
+        var html = '<button class="cat-tab' + (!this.selectedCategory ? ' active' : '') + '" data-category="">' + Messages.ALL + '</button>';
         categories.forEach(function (cat) {
             html += '<button class="cat-tab' + (self.selectedCategory === cat ? ' active' : '') + '" data-category="' + ChannelUtils.escapeHtml(cat) + '">' + ChannelUtils.escapeHtml(cat) + '</button>';
         });
@@ -1460,7 +1482,7 @@ class IPTVPlayer {
     }
 
     setActivityTimeout(minutes) {
-        const ms = minutes === 0 ? 999999999 : minutes * 60 * 1000;
+        const ms = minutes === 0 ? TimeConstants.NEVER_TIMEOUT : minutes * 60 * 1000;
         fetch('/api/buffer/set-timeout?timeout=' + ms);
     }
 
