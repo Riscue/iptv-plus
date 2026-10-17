@@ -4,94 +4,70 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-IPTV Plus is a modern IPTV player with advanced DVR functionality and Smart TV compatibility. The application consists of:
-- **Backend**: Node.js + Express server that manages IPTV playlist parsing, FFmpeg recording, and buffer management
-- **Frontend**: Vanilla JavaScript with HLS.js for video playback, featuring TV-optimized D-Pad navigation and glassmorphism UI
-- **Video Processing**: FFmpeg for real-time HLS stream recording to disk
+IPTV Plus is an IPTV player with DVR (rewind up to 180 min) and Smart TV remote support.
+- **Backend**: Node.js + Express. Parses the M3U8 playlist and runs FFmpeg to record the live stream to disk as HLS.
+- **Frontend**: Vanilla JavaScript + HLS.js. D-Pad navigation built for TVs.
+- **Runtime dependency**: `ffmpeg` and `ps` (procps) must be on PATH.
 
-## Development Commands
+## Commands
 
 ```bash
-# Install dependencies
 npm install
+npm run dev          # node --watch src/index.js
+npm start            # node src/index.js
+npm run build:info   # writes src/build-info.json from git (gitignored; /api/build-info falls back to "unknown")
 
-# Build version info (generates src/build-info.json from git)
-npm run build:info
-
-# Run in development mode (with file watcher)
-npm run dev
-
-# Run in production
-npm start
-```
-
-**Docker Development**:
-```bash
-# Build image
 docker build -f docker/Dockerfile -t iptv-plus .
-
-# Run container
 docker run -d -p 3000:3000 --env-file .env -v $(pwd)/tmp:/tmp/iptv-buffer --name iptv-plus iptv-plus
 ```
 
-## Required Environment Variables
+- There are no tests, linter, or frontend build step.
+- `.env` is **not** loaded automatically because there is no dotenv. Locally, export the vars yourself or run `node --env-file=.env src/index.js`.
+- The port is hardcoded to 3000 in `src/index.js`.
 
-- `PLAYLIST_URL` (required): M3U8 playlist URL from IPTV provider
-- `BUFFER_DIR` (optional): Directory for FFmpeg buffer segments, defaults to `/tmp/iptv-buffer`
-- `TZ` (optional): Timezone, defaults to `Europe/Istanbul`
+## Environment Variables
+
+- `PLAYLIST_URL` (required): M3U8 playlist URL from the IPTV provider
+- `BUFFER_DIR` (default `/tmp/iptv-buffer`): FFmpeg HLS output, served at `/buffer/...`
+- `PLAYLIST_FILE` (default `/tmp/playlist.m3u8`): local playlist cache (24h TTL)
+- `TZ` (default `Europe/Istanbul`)
+
+All tunables (buffer duration, segment length, retry, and timeouts) are in `src/constants.js`.
 
 ## Architecture
 
-### Backend Structure (`src/`)
+### Backend (`src/`)
 
-- **index.js**: Express server entry point, serves static files and API routes
-- **channel-controller.js**: Manages M3U8 playlist downloading, parsing, caching, and channel selection
-- **buffer-controller.js**: Orchestrates FFmpeg processes for DVR recording, segment cleanup, orphaned process recovery, and activity-based auto-stop
-- **constants.js**: Application-wide configuration (buffer duration: 180min, segment size: 5s, timeouts, retry logic)
-- **logger.js**: Simple console logging with component prefixes
+`index.js` wires the routes to two static-class controllers. Their state lives in module-level variables.
 
-### Frontend Structure (`views/`)
+- **channel-controller.js**: downloads, caches, and parses the playlist, filters out VOD, and holds `currentChannel`. Playlist downloads go through a promise singleton, so concurrent requests share one download. `changeChannel` reuses the running recording when the target channel is already recording. Otherwise it calls `BufferController.changeChannel`. The two controllers stay in sync through `BufferController.setOnStop()`.
+- **buffer-controller.js**: owns **a single global `ffmpegProcess`**. Only one channel records at a time across the whole server, and every client shares it. Switching channels kills the previous recording.
+  - FFmpeg runs `-c copy -f hls` into `{BUFFER_DIR}/{safeName}/live.m3u8` with `%08d.ts` segments. `-hls_list_size` and `delete_segments` enforce the 180-min window, and a periodic `cleanupOldSegments` acts as a backstop.
+  - There are two retry paths:
+    - `startBufferWithRetry`: exponential backoff (1s, 2s, 4s), max 3 attempts.
+    - `autoRestart`: runs when FFmpeg exits unexpectedly. Its attempt counter resets after 30s of stable recording.
+  - Inactivity auto-stop: `checkActivity` stops recording when no heartbeat has arrived for `activityTimeoutMs` (default 5 min). The player can change this through `/api/buffer/set-timeout`, and `startBuffer` resets it to the default.
+  - Shutdown: SIGTERM, then SIGKILL after `gracefulShutdownTimeout`.
+- **Startup is destructive**: `cleanupOrphaned()` kills stray ffmpeg processes found with `ps aux | grep ffmpeg.*BUFFER_DIR`, and `cleanupAllBuffers()` deletes every channel buffer directory. DVR history does not survive a restart.
+- Channel names become directory names through `getSafeName`: `[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_-]` → `_`.
 
-- **index.html**: Home page with categories grid, favorites slots (1-9), and recent channels
-- **player.html**: Video player with DVR controls, channel list sidebar, and progress bar
-- **public/js/**:
-  - `home.js`: HomePage class with matrix-based D-Pad navigation and multi-grid keyboard handling
-  - `player.js`: IPTVPlayer class with HLS.js integration, seekable DVR playback, and overlay UI management
-  - `utils.js`: Local storage helpers (favorites, watch history), HTML escaping, safe name generation
-  - `constants.js`: Frontend constants (time values, key codes, UI settings)
-  - `messages.js`: Turkish language strings
-  - `debug.js`: Debug panel (`Ctrl/Cmd + Shift + D`)
+### Frontend (`views/`)
 
-### Key Backend Design Patterns
-
-**Buffer Management**: FFmpeg spawns with HLS output to `/buffer/{channelName}/live.m3u8`. Old segments auto-delete beyond 180 minutes. Activity heartbeat API prevents premature timeout during active viewing.
-
-**Process Safety**: On startup, `cleanupOrphaned()` detects and kills zombie FFmpeg processes via `ps aux | grep`. Graceful shutdown uses SIGTERM → wait 2s → SIGKILL pattern.
-
-**Concurrency Protection**: Playlist download uses a promise singleton pattern to prevent race conditions when multiple clients request channels simultaneously.
-
-**Restart Logic**: Exponential backoff retry (1s, 2s, 4s...) if FFmpeg crashes, capped at 3 attempts per channel change.
-
-### Key Frontend Design Patterns
-
-**Matrix Navigation**: `handleArrowKeys()` computes grid column count from element positions, enabling 2D arrow navigation across multiple stacked grids.
-
-**Focus Management**: TV devices lose focus after fullscreen exit. `setupFullscreenFocusRestore()` restores focus to the expected element via history state and DOM polling.
-
-**DVR Seek**: Player calculates buffer start time from server, maps progress bar clicks to segment-relative timestamps, and handles "return to LIVE" discontinuity.
-
-**Heartbeat**: `setInterval` sends `/api/buffer/heartbeat` every 30s while player is active to keep FFmpeg recording alive.
+- `index.html` (home) and `player.html` load plain `<script>` tags that share globals. There are no modules and no bundler, so **script order matters**: `constants.js` → `utils.js` → `messages.js` → page script → `debug.js`. HLS.js comes from the jsDelivr CDN (`@latest`).
+- The code mostly uses ES5 style (`var`, `var self = this`). Match it.
+- UI strings are Turkish and live in `messages.js`. Key codes and time constants (such as `HEARTBEAT_INTERVAL`) are in `public/js/constants.js`.
+- **home.js** (`HomePage`): has a categories grid, favorites (9-slot array in localStorage, `null` = empty), and recents. `handleArrowKeys()` works out the column count from element positions, so 2D navigation spans several stacked grids.
+- **player.js** (`IPTVPlayer`): plays `/buffer/{safeName}/live.m3u8` with HLS.js. For DVR seeking, it maps progress bar positions to times relative to the buffer start reported by the server, and handles the discontinuity when returning to LIVE. It sends a heartbeat to `/api/buffer/heartbeat` on an interval while active.
+- **utils.js**: holds the localStorage helpers, `escapeHtml`, and `setupFullscreenFocusRestore`. TVs lose focus after exiting fullscreen, so this function restores it.
+- **debug.js**: debug panel, toggled with `Ctrl/Cmd + Shift + D`.
 
 ## Known Bugs
 
-- **TV Focus**: On initial launch and after exiting fullscreen, key mappings don't work until user clicks screen to regain focus
-- **Media Keys**: Hardware media keys (play, pause) are unresponsive on TV devices
-- **Codec Support**: Some video codecs cause playback failures on certain channels
+- **TV Focus**: On first launch and after exiting fullscreen, keys don't respond until the user clicks the screen.
+- **Media Keys**: Hardware play and pause keys don't work on TVs.
+- **Codec Support**: Some codecs make playback fail on certain channels.
 
-## Important Implementation Details
+## Implementation Notes
 
-- VOD filtering excludes `.mp4`, `.mkv` files and categories containing keywords: "film", "movie", "vod", "sinema", "cinema"
-- Channel names are sanitized using `[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_-]` regex for filesystem safety
-- Favorites are stored as 9-slot array (slots 1-9) in localStorage, `null` = empty slot
-- Build info (commit, branch, date) is generated by `scripts/build-info.js` at Docker build time
-- The playlist is cached locally for 24 hours to reduce provider load
+- VOD filtering drops `.mp4` and `.mkv` URLs. It also drops categories containing "film", "movie", "vod", "sinema", or "cinema".
+- The Docker build copies `.git` in to run `build:info`, then deletes it.
