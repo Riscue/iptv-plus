@@ -32,6 +32,7 @@ app.get('/api/buffer/state', asyncHandler(BufferController.state));
 app.get('/api/buffer/heartbeat', asyncHandler(BufferController.heartbeat));
 app.get('/api/buffer/set-timeout', asyncHandler(BufferController.setTimeout));
 app.post('/api/buffer/stop', asyncHandler(BufferController.stop));
+app.post('/api/buffer/restart', asyncHandler(BufferController.restart));
 
 app.get('/api/build-info', (req, res) => {
     try {

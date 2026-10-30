@@ -10,6 +10,7 @@ const PCKeyCodes = {
 
     D_KEY: 68,
     F_KEY: 70,
+    R_KEY: 82,
 
     PAGE_UP: 33,
     PAGE_DOWN: 34,
@@ -84,6 +85,7 @@ const IndicatorTypes = {
     SEEK: 'seek',
     LIVE: 'live',
     PLAY: 'play',
+    NOTICE: 'notice',
 };
 
 const IndicatorPriority = {
@@ -94,6 +96,7 @@ const IndicatorPriority = {
     [IndicatorTypes.SEEK]: 4,
     [IndicatorTypes.LIVE]: 4,
     [IndicatorTypes.PLAY]: 4,
+    [IndicatorTypes.NOTICE]: 5,
 };
 
 if (typeof module !== 'undefined' && module.exports) {

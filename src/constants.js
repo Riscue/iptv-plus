@@ -15,6 +15,12 @@ module.exports = {
     activityCheckInterval: 30000,
     cleanupInterval: 5 * 60 * 1000,
 
+    diagnosticsInterval: 60000,
+    slowSegmentFactor: 2,
+    timestampRecoveryCooldown: 60000,
+    timestampRecoveryMaxAttempts: 3,
+    timestampRecoveryWindow: 5 * 60 * 1000,
+
     gracefulShutdownTimeout: 2000,
     forceKillTimeout: 500,
 };

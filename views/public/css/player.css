@@ -72,7 +72,8 @@ body {
 #video-overlay.active.loading-mode,
 #video-overlay.active.error-mode,
 #video-overlay.active.live-mode,
-#video-overlay.active.play-mode {
+#video-overlay.active.play-mode,
+#video-overlay.active.notice-mode {
     opacity: 1 !important;
 }
 
@@ -166,6 +167,16 @@ body {
     backdrop-filter: blur(10px);
     flex-direction: row;
     gap: 15px;
+}
+
+#video-overlay.notice-mode {
+    color: #00d4ff;
+    text-shadow: 0 2px 15px rgba(0, 0, 0, 0.9);
+    background: rgba(0, 0, 0, 0.85);
+    padding: clamp(15px, 2vh, 25px) clamp(25px, 4vw, 40px);
+    border-radius: 12px;
+    border: 2px solid rgba(0, 212, 255, 0.6);
+    backdrop-filter: blur(10px);
 }
 
 #video-overlay.live-mode {

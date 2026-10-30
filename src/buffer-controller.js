@@ -12,7 +12,12 @@ const {
     forceKillTimeout,
     retryBaseDelay,
     retryMaxDelay,
-    inputReadTimeout
+    inputReadTimeout,
+    diagnosticsInterval,
+    slowSegmentFactor,
+    timestampRecoveryCooldown,
+    timestampRecoveryMaxAttempts,
+    timestampRecoveryWindow
 } = require('./constants');
 const logger = require('./logger');
 
@@ -31,8 +36,16 @@ let restartAttempts = 0;
 let restartResetTimer = null;
 let nextRetryAt = null;
 let lastError = null;
+let lastTimestampRecoveryAt = 0;
+let timestampRecoveries = 0;
 
 const FFMPEG_ERROR_PATTERN = /error|failed|returned|refused|timed out|not found|denied|invalid/i;
+// Warnings that explain stutter in the recording; aggregated so a noisy source can't flood the log
+const FFMPEG_WARNING_PATTERN = /non-monoton|discontinuity|skipping|expired|corrupt|mismatch|reconnect|dropping/i;
+const SEGMENT_OPEN_PATTERN = /Opening '.*\.ts' for writing/;
+// After a reconnect the source clock can sit near the 33-bit PTS wrap; FFmpeg then mis-unwraps DTS and every
+// following segment stutters. A fresh connection fixes it, so respawn as soon as the muxer reports it
+const TIMESTAMP_ERROR_PATTERN = /Invalid timestamps/i;
 
 class BufferController {
 
@@ -66,6 +79,24 @@ class BufferController {
             .replace(/\b[a-z]+:\/\/\S+?:\s+/gi, '')
             .replace(/\b[a-z]+:\/\/\S+/gi, '<url>')
             .trim();
+    }
+
+    static recordSegment(diagnostics) {
+        const now = Date.now();
+        if (diagnostics.lastSegmentAt) {
+            const seconds = (now - diagnostics.lastSegmentAt) / 1000;
+            if (seconds > segmentDuration * slowSegmentFactor) {
+                logger.log('FFmpeg', 'Slow segment: took ' + seconds.toFixed(1) + 's, expected ~' + segmentDuration + 's');
+            }
+        }
+        diagnostics.lastSegmentAt = now;
+    }
+
+    static flushDiagnostics(diagnostics) {
+        if (diagnostics.warnings.size === 0) return;
+        const summary = Array.from(diagnostics.warnings, ([message, count]) => count + 'x ' + message).join('\n');
+        logger.log('FFmpeg', 'Stream warnings:\n' + summary);
+        diagnostics.warnings.clear();
     }
 
     static getState() {
@@ -150,6 +181,9 @@ class BufferController {
         const processGeneration = ++generation;
         ffmpegProcess = proc;
 
+        const diagnostics = {warnings: new Map(), lastSegmentAt: null};
+        const diagnosticsTimer = setInterval(() => BufferController.flushDiagnostics(diagnostics), diagnosticsInterval);
+
         proc.on('error', (err) => {
             if (err.code === 'ENOENT') {
                 logger.error('BUFFER', 'ffmpeg not found, it must be installed and available on PATH');
@@ -158,21 +192,41 @@ class BufferController {
                 logger.error('BUFFER', 'FFmpeg spawn error:', err.message);
             }
             // A failed spawn emits 'error' but never 'exit', so clear the state here
-            if (proc.pid === undefined && ffmpegProcess === proc) {
-                ffmpegProcess = null;
+            if (proc.pid === undefined) {
+                clearInterval(diagnosticsTimer);
+                if (ffmpegProcess === proc) ffmpegProcess = null;
             }
         });
 
+        // Chunks can end mid-line; carry the partial line over to the next chunk
+        let stderrTail = '';
         proc.stderr.on('data', (data) => {
-            const lines = data.toString().split('\n').filter(line => FFMPEG_ERROR_PATTERN.test(line));
+            const parts = (stderrTail + data.toString()).split(/[\r\n]+/);
+            stderrTail = parts.pop().slice(-4096);
+            const lines = [];
+            for (const line of parts) {
+                if (SEGMENT_OPEN_PATTERN.test(line)) {
+                    BufferController.recordSegment(diagnostics);
+                } else if (FFMPEG_ERROR_PATTERN.test(line)) {
+                    lines.push(line);
+                } else if (FFMPEG_WARNING_PATTERN.test(line)) {
+                    const key = BufferController.formatFfmpegError(line).replace(/\d+/g, 'N');
+                    diagnostics.warnings.set(key, (diagnostics.warnings.get(key) || 0) + 1);
+                }
+            }
             if (lines.length === 0) return;
             logger.error('FFmpeg', lines.join('\n').trim());
+            if (ffmpegProcess === proc && lines.some(line => TIMESTAMP_ERROR_PATTERN.test(line))) {
+                BufferController.recoverFromTimestampError(processGeneration);
+            }
             if (ffmpegProcess === proc) {
                 lastError = BufferController.formatFfmpegError(lines[lines.length - 1]);
             }
         });
 
         proc.on('exit', async (code, signal) => {
+            clearInterval(diagnosticsTimer);
+            BufferController.flushDiagnostics(diagnostics);
             if (ffmpegProcess !== proc) return;
             ffmpegProcess = null;
 
@@ -252,6 +306,8 @@ class BufferController {
         restartAttempts = 0;
         nextRetryAt = null;
         lastError = null;
+        lastTimestampRecoveryAt = 0;
+        timestampRecoveries = 0;
         if (onStopCallback) onStopCallback();
         logger.log('BUFFER', 'Recording stopped');
     }
@@ -382,6 +438,56 @@ class BufferController {
             logger.log('BUFFER', 'Timeout set to ' + Math.floor(timeout / 60000) + ' minutes');
         }
         res.json({success: true, timeout: activityTimeoutMs});
+    }
+
+    // Respawns FFmpeg but keeps the segments: append_list + discont_start continue the same playlist.
+    // Also works while an auto-restart is pending: the generation bump cancels it and the retry happens now
+    static restartRecording() {
+        return BufferController.withLock(() => BufferController.restartRecordingUnlocked());
+    }
+
+    static async restartRecordingUnlocked() {
+        if (!currentChannelName || !currentChannelUrl) return false;
+        logger.log('BUFFER', 'Restarting recording, keeping buffer:', currentChannelName);
+        generation++;
+        if (BufferController.isRecording()) {
+            await BufferController.gracefulShutdown(ffmpegProcess);
+            ffmpegProcess = null;
+        }
+        nextRetryAt = null;
+        lastError = null;
+        await BufferController.startBuffer({name: currentChannelName, url: currentChannelUrl});
+        return true;
+    }
+
+    // Gives up after timestampRecoveryMaxAttempts recoveries in a row, so a source that keeps producing bad
+    // timestamps isn't cut every minute; the count resets once the error stays away for timestampRecoveryWindow
+    static recoverFromTimestampError(processGeneration) {
+        const now = Date.now();
+        const sinceLast = now - lastTimestampRecoveryAt;
+        if (sinceLast < timestampRecoveryCooldown) return;
+        lastTimestampRecoveryAt = now;
+        timestampRecoveries = sinceLast < timestampRecoveryWindow ? timestampRecoveries + 1 : 1;
+
+        if (timestampRecoveries > timestampRecoveryMaxAttempts) {
+            if (timestampRecoveries === timestampRecoveryMaxAttempts + 1) {
+                logger.log('BUFFER', 'Timestamp errors persist after ' + timestampRecoveryMaxAttempts + ' restarts, giving up auto-recovery');
+            }
+            return;
+        }
+
+        logger.log('BUFFER', 'Timestamp error detected, restarting recording (' + timestampRecoveries + '/' + timestampRecoveryMaxAttempts + ')');
+        BufferController.withLock(async () => {
+            if (processGeneration === generation) await BufferController.restartRecordingUnlocked();
+        }).catch(err => logger.error('BUFFER', 'Timestamp recovery failed:', err.message));
+    }
+
+    static async restart(req, res) {
+        logger.log('BUFFER', 'Restart requested via API');
+        // A manual restart re-arms automatic timestamp recovery
+        timestampRecoveries = 0;
+        const success = await BufferController.restartRecording();
+        res.json({success});
     }
 
     static async stop(req, res) {

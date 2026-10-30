@@ -513,6 +513,21 @@ class IPTVPlayer {
                 overlay.classList.add('loading-mode', 'active');
                 break;
 
+            case IndicatorTypes.NOTICE:
+                overlay.innerHTML = data.message;
+                overlay.classList.add(data.error ? 'error-mode' : 'notice-mode', 'active');
+                if (data.autoHide) {
+                    this.overlayTimer = setTimeout(function () {
+                        overlay.classList.remove('active');
+                        self.overlayType = null;
+                        // A stall that started while the notice was up had its LOADING suppressed
+                        if (self.els.video && self.els.video.readyState < 3 && !self.els.video.paused) {
+                            self.showIndicator(IndicatorTypes.LOADING);
+                        }
+                    }, TimeConstants.OVERLAY_AUTO_HIDE * 2);
+                }
+                break;
+
             case IndicatorTypes.ERROR:
             case IndicatorTypes.ERROR_PERMANENT:
                 overlay.innerHTML = (data.message || Icons.ERROR + Messages.ERROR);
@@ -1105,6 +1120,12 @@ class IPTVPlayer {
                 this.toggleFullscreen();
                 break;
 
+            case PCKeyCodes.R_KEY:
+                if (e.ctrlKey || e.metaKey) break;
+                e.preventDefault();
+                this.restartRecording();
+                break;
+
             case PCKeyCodes.SPACE:
                 e.preventDefault();
                 this.togglePlay();
@@ -1143,6 +1164,10 @@ class IPTVPlayer {
                 e.preventDefault();
                 this.goToLive();
                 break;
+            case TVKeyCodes.GREEN:
+                e.preventDefault();
+                this.restartRecording();
+                break;
             case TVKeyCodes.YELLOW:
                 e.preventDefault();
                 this.toggleFullscreen();
@@ -1152,6 +1177,26 @@ class IPTVPlayer {
                 this.toggleChannelList();
                 break;
         }
+    }
+
+    async restartRecording() {
+        if (this.restartingRecording) return;
+        this.restartingRecording = true;
+        this.showIndicator(IndicatorTypes.NOTICE, {message: Messages.RECORDING_RESTARTING});
+        var success = false;
+        try {
+            var res = await fetch('/api/buffer/restart', {method: 'POST'});
+            var data = await res.json();
+            success = !!data.success;
+        } catch (e) {
+            console.error('[PLAYER] Restart recording failed:', e);
+        }
+        this.restartingRecording = false;
+        this.showIndicator(IndicatorTypes.NOTICE, {
+            message: success ? Messages.RECORDING_RESTARTED : Messages.RECORDING_RESTART_FAILED,
+            error: !success,
+            autoHide: true
+        });
     }
 
     handleMediaKeys(e) {

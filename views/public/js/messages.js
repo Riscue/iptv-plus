@@ -46,6 +46,9 @@ const Messages = {
     STOP_RECORDING_CONFIRM: 'Emin misiniz? Tekrar basın',
     RECORDING_STOPPED_NOTICE: 'Kayıt durduruldu',
     STOP_RECORDING_FAILED: 'Kayıt durdurulamadı',
+    RECORDING_RESTARTING: 'Kayıt yenileniyor',
+    RECORDING_RESTARTED: 'Kayıt yenilendi, geçmiş korundu',
+    RECORDING_RESTART_FAILED: 'Kayıt yenilenemedi',
 
     REMOVED_FROM_FAVORITES: 'Favorilerden çıkarıldı',
     FAVORITE_SLOTS_FULL: 'Favori yerleri dolu!',
